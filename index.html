@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Presets</title>
+    <title>Wealth Tracker - Presets Saved</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -269,7 +269,7 @@
             lastRateUpdate: null,
             currentAssets: [],
             history: [],
-            presets: [] // New: Store saved selections
+            presets: [] // Ensure presets are stored here
         };
 
         // UI State
@@ -293,7 +293,7 @@
             if(saved) {
                 const loaded = JSON.parse(saved);
                 appData = { ...appData, ...loaded };
-                // Backwards compat
+                // Backwards compat for old saves
                 if(!appData.liveRates) appData.liveRates = { ...appData.rates };
                 if(!appData.presets) appData.presets = [];
             }
@@ -516,24 +516,12 @@
         function loadPreset(id) {
             const preset = appData.presets.find(p => p.id === id);
             if(!preset) return;
-
-            // Update Selection
             selectedIds = new Set(preset.assetIds);
-            
-            // Update UI
-            document.querySelectorAll('.asset-checkbox').forEach(cb => {
-                // The onchange handler for checkbox is basically toggleSelect(id, checked)
-                // We need to map row ID to checkbox
-                // Since we don't have direct row ref, we re-render checkboxes
-            });
-            
-            // Easier way: re-render the whole table to check the boxes correctly
-            // This is fast enough for this app size
             renderAll(); 
         }
 
         function deletePreset(id, event) {
-            event.stopPropagation(); // prevent triggering loadPreset
+            event.stopPropagation();
             if(!confirm("Delete this preset?")) return;
             appData.presets = appData.presets.filter(p => p.id !== id);
             saveData();
@@ -1105,9 +1093,12 @@
                         if(!appData.history) appData.history = [];
                         if(!appData.rates) appData.rates = {...DEFAULT_RATES};
                         if(!appData.liveRates) appData.liveRates = {...appData.rates};
+                        // Initialize presets if missing
+                        if(!appData.presets) appData.presets = [];
                         
                         saveData();
                         renderAll();
+                        renderPresets(); // Update UI
                     }
                 } catch(err) { alert("Invalid JSON"); }
             };
