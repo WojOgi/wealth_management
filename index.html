@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wealth Tracker - Presets</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; transition: background-color 0.3s; }
+        .card { background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .input-std { @apply border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500; }
+        .fade-in { animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* History Mode Styles */
+        body.history-mode { background-color: #fff7ed; } 
+        .history-mode .card { border-color: #fdba74; }
+
+        /* Sortable Headers */
+        th.sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; }
+        th.sortable:hover { background-color: #f3f4f6; }
+        
+        /* Custom Date Input Styling */
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
+        input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+        /* Loading Spinner Overlay */
+        #loadingOverlay { backdrop-filter: blur(2px); background: rgba(255,255,255,0.5); }
+
+        /* Preset Chips */
+        .preset-chip { @apply flex items-center gap-1 bg-white border border-indigo-200 text-indigo-700 px-2 py-1 rounded-full text-xs font-semibold hover:bg-indigo-50 cursor-pointer transition shadow-sm; }
+    </style>
+</head>
+<body class="p-6">
+
+    <div id="loadingOverlay" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white p-4 rounded shadow-lg flex items-center gap-3">
+            <i class="fas fa-spinner fa-spin text-blue-600 text-xl"></i>
+            <span class="font-semibold text-gray-700" id="loadingText">Processing...</span>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-chart-line text-blue-600" id="mainIcon"></i> 
+                <span id="pageTitle">My Wealth Tracker</span>
+            </h1>
+            <p id="pageSubtitle" class="text-gray-500 text-sm">Track savings, real estate, and crypto yields.</p>
+        </div>
+        
+        <div class="flex gap-2">
+            <button id="btnExitHistory" onclick="exitHistoryMode()" class="hidden bg-orange-600 text-white px-4 py-2 rounded shadow hover:bg-orange-700 font-bold fade-in">
+                <i class="fas fa-arrow-left"></i> Return to Current
+            </button>
+
+            <div class="flex items-center gap-2 bg-white px-3 py-2 rounded shadow border border-gray-100">
+                <span class="text-sm font-bold text-gray-600">Base:</span>
+                <select id="baseCurrency" class="bg-transparent font-bold text-blue-600 focus:outline-none" onchange="renderAll()">
+                    <option value="USD">USD</option>
+                    <option value="PLN">PLN</option>
+                    <option value="SAR">SAR</option>
+                </select>
+            </div>
+            
+            <div id="fileControls" class="flex gap-2">
+                <button onclick="exportData()" title="Export JSON" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm"><i class="fas fa-download"></i></button>
+                <input type="file" id="importFile" class="hidden" onchange="importData(this)">
+                <button onclick="document.getElementById('importFile').click()" title="Import JSON" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 text-sm"><i class="fas fa-upload"></i></button>
+            </div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div class="card p-6 border-l-4 border-blue-500 relative" id="cardWealth">
+            <h3 class="text-gray-500 text-sm uppercase font-semibold">Total Net Worth</h3>
+            <div class="mt-2 flex items-baseline">
+                <span id="displayTotalWealth" class="text-3xl font-bold text-gray-800 fade-in">0.00</span>
+                <span id="displayCurrency1" class="ml-2 text-gray-500">USD</span>
+            </div>
+        </div>
+
+        <div class="card p-6 border-l-4 border-green-500 relative" id="cardIncome">
+            <h3 class="text-gray-500 text-sm uppercase font-semibold">Est. Monthly Passive Income</h3>
+            <div class="mt-2 flex items-baseline">
+                <span id="displayTotalIncome" class="text-3xl font-bold text-gray-800 fade-in">0.00</span>
+                <span id="displayCurrency2" class="ml-2 text-gray-500">USD</span>
+            </div>
+        </div>
+
+        <div class="card p-6 relative">
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-gray-500 text-sm uppercase font-semibold">Exchange Rates (vs USD)</h3>
+                <button id="btnFetchRates" onclick="fetchLiveRates()" class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition" title="Fetch live rates">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                    <label class="text-gray-400 text-xs">1 USD = ? PLN</label>
+                    <input type="number" id="ratePLN" step="0.0001" class="border rounded w-full px-2 py-1 font-mono text-gray-700" onchange="updateRatesManual()">
+                </div>
+                <div>
+                    <label class="text-gray-400 text-xs">1 USD = ? SAR</label>
+                    <input type="number" id="rateSAR" step="0.0001" class="border rounded w-full px-2 py-1 font-mono text-gray-700" onchange="updateRatesManual()">
+                </div>
+            </div>
+            <div id="rateInfoText" class="text-[10px] text-gray-400 mt-2 text-right italic">Live Rates</div>
+        </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2">
+            
+            <div class="card p-6 mb-6 border border-gray-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-700" id="listTitle">Current Assets</h2>
+                    <button id="btnSnapshot" onclick="archiveMonth()" class="text-sm bg-indigo-50 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-100 transition border border-indigo-100">
+                        <i class="fas fa-save"></i> Snapshot Month
+                    </button>
+                </div>
+
+                <form id="assetForm" onsubmit="handleAssetSubmit(event)" class="bg-gray-50 p-4 rounded mb-6 grid grid-cols-1 md:grid-cols-6 gap-3 items-end border border-gray-200">
+                    <input type="hidden" id="editId" value="">
+
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-bold text-gray-500">Category</label>
+                        <input type="text" id="inCat" placeholder="e.g. Real Estate" class="input-std" list="catList" required>
+                        <datalist id="catList"></datalist>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-bold text-gray-500">Subcategory / Name</label>
+                        <input type="text" id="inSub" placeholder="e.g. Apartment 1" class="input-std" required>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="text-xs font-bold text-gray-500">Currency</label>
+                        <select id="inCurr" class="input-std">
+                            <option value="PLN">PLN</option>
+                            <option value="SAR">SAR</option>
+                            <option value="USD">USD</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-1">
+                        <label class="text-xs font-bold text-gray-500">Amount</label>
+                        <input type="number" id="inAmt" placeholder="0.00" step="0.01" class="input-std" required>
+                    </div>
+                    
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-bold text-gray-500">Yield Type</label>
+                        <select id="inYieldType" class="input-std">
+                            <option value="none">None</option>
+                            <option value="percent_year">% APY (Yearly)</option>
+                            <option value="fixed_month">Fixed Amount (Monthly)</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="text-xs font-bold text-gray-500">Yield Value</label>
+                        <input type="number" id="inYieldVal" placeholder="0" step="0.01" class="input-std">
+                    </div>
+                    <div class="md:col-span-2 flex gap-2">
+                        <button type="submit" id="btnSubmit" class="bg-blue-600 text-white flex-1 py-2 rounded hover:bg-blue-700 font-bold shadow-sm">Add Asset</button>
+                        <button type="button" id="btnCancelEdit" onclick="cancelEdit()" class="hidden bg-gray-300 text-gray-700 px-3 py-2 rounded hover:bg-gray-400 font-bold"><i class="fas fa-times"></i></button>
+                    </div>
+                </form>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="text-gray-500 border-b text-sm bg-gray-50">
+                                <th class="p-3 w-10 text-center"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this.checked)" class="cursor-pointer"></th>
+                                <th class="p-3 rounded-tl sortable" onclick="setSort('category')">
+                                    Category <i id="sortIcon-category" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                </th>
+                                <th class="p-3 sortable" onclick="setSort('subcategory')">
+                                    Name <i id="sortIcon-subcategory" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                </th>
+                                <th class="p-3 text-right">Value (Orig)</th>
+                                <th class="p-3 text-right sortable" onclick="setSort('valueBase')">
+                                    Value (Base) <i id="sortIcon-valueBase" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                </th>
+                                <th class="p-3 text-right sortable" onclick="setSort('income')">
+                                    Mth. Income <i id="sortIcon-income" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                </th>
+                                <th class="p-3 text-center rounded-tr">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="assetTableBody" class="text-sm">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+             <div class="card p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-700">History</h2>
+                    <button onclick="addHistoricalRecord()" class="text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded hover:bg-gray-200 border border-gray-300">
+                        <i class="fas fa-plus"></i> Add Past Record
+                    </button>
+                </div>
+                <div id="historyList" class="space-y-2 max-h-64 overflow-y-auto pr-2">
+                    </div>
+             </div>
+        </div>
+
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            
+            <div class="card p-4 border-2 border-indigo-100 bg-indigo-50/30">
+                <h3 class="font-bold text-indigo-700 mb-2 text-center text-sm uppercase">Selection Analysis</h3>
+                
+                <div id="presetsContainer" class="mb-4 text-center">
+                    <div id="presetList" class="flex flex-wrap gap-2 justify-center">
+                        </div>
+                </div>
+
+                <div class="flex justify-center mb-3">
+                    <div class="bg-indigo-100 p-1 rounded-lg flex text-xs">
+                        <button onclick="setChartMode('category')" id="mode-category" class="px-3 py-1 rounded bg-white shadow text-indigo-700 font-semibold transition">By Category</button>
+                        <button onclick="setChartMode('item')" id="mode-item" class="px-3 py-1 rounded text-indigo-600 hover:text-indigo-800 transition">By Item</button>
+                    </div>
+                </div>
+
+                <div class="text-center mb-4">
+                    <span class="text-xs text-gray-500">Selected Total:</span>
+                    <div class="text-2xl font-bold text-indigo-800">
+                        <span id="selectionTotal">0.00</span> <span id="selectionCurrency" class="text-sm font-normal">USD</span>
+                    </div>
+                </div>
+                
+                <div class="relative h-48 w-full mb-4">
+                    <canvas id="selectionChart"></canvas>
+                </div>
+
+                <div class="flex gap-2 items-center border-t border-indigo-200 pt-3">
+                    <input type="text" id="newPresetName" placeholder="Save selection as..." class="flex-1 text-xs border border-indigo-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-500">
+                    <button onclick="savePreset()" class="bg-indigo-600 text-white text-xs px-3 py-1 rounded hover:bg-indigo-700 transition">Save</button>
+                </div>
+                
+                <p id="selectionHint" class="text-center text-xs text-gray-400 mt-2 italic">Check items to analyze or save grouping.</p>
+            </div>
+
+            <div class="card p-4">
+                <h3 class="font-bold text-gray-700 mb-4 text-center">Total Wealth Allocation</h3>
+                <canvas id="allocationChart"></canvas>
+            </div>
+            
+            <div class="card p-4">
+                <h3 class="font-bold text-gray-700 mb-4 text-center">Net Worth History</h3>
+                <canvas id="historyChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA STRUCTURE & STATE ---
+        const DEFAULT_RATES = { USD: 1, PLN: 4.00, SAR: 3.75 };
+        // Consistent Color Palette
+        const CHART_COLORS = [
+            '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', 
+            '#6366F1', '#14B8A6', '#F97316', '#84CC16', '#06B6D4', '#64748B'
+        ];
+
+        let appData = {
+            rates: { ...DEFAULT_RATES },
+            liveRates: { ...DEFAULT_RATES },
+            lastRateUpdate: null,
+            currentAssets: [],
+            history: [],
+            presets: [] // New: Store saved selections
+        };
+
+        // UI State
+        let activeSnapshotId = null; 
+        let editModeId = null;
+        let sortState = { key: 'category', dir: 'asc' };
+        let selectedIds = new Set();
+        let selectionChartMode = 'category'; 
+
+        // Color Mapping State
+        let categoryColorMap = {};
+
+        // Charts
+        let allocChart = null;
+        let histChart = null;
+        let selectChart = null;
+
+        // --- INITIALIZATION ---
+        window.onload = async function() {
+            const saved = localStorage.getItem('wealthTrackerData');
+            if(saved) {
+                const loaded = JSON.parse(saved);
+                appData = { ...appData, ...loaded };
+                // Backwards compat
+                if(!appData.liveRates) appData.liveRates = { ...appData.rates };
+                if(!appData.presets) appData.presets = [];
+            }
+            
+            appData.rates = { ...appData.liveRates };
+
+            updateRateInputs();
+            renderAll();
+            renderPresets();
+
+            const now = Date.now();
+            if (!appData.lastRateUpdate || (now - appData.lastRateUpdate > 86400000)) {
+                await fetchLiveRates();
+            }
+        };
+
+        // --- LOADING SPINNER ---
+        function toggleLoading(show, text="Processing...") {
+            const el = document.getElementById('loadingOverlay');
+            document.getElementById('loadingText').innerText = text;
+            el.classList.toggle('hidden', !show);
+        }
+
+        // --- API & RATES ---
+        async function fetchLiveRates() {
+            const btn = document.getElementById('btnFetchRates');
+            if(btn) btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            try {
+                const response = await fetch('https://open.er-api.com/v6/latest/USD');
+                const data = await response.json();
+                if(data && data.rates) {
+                    appData.liveRates.PLN = data.rates.PLN;
+                    appData.liveRates.SAR = data.rates.SAR;
+                    appData.lastRateUpdate = Date.now();
+                    if(!activeSnapshotId) {
+                        appData.rates = { ...appData.liveRates };
+                        updateRateInputs();
+                    }
+                    saveData();
+                    renderAll();
+                }
+            } catch (error) {
+                console.error("Live fetch error", error);
+            } finally {
+                if(btn) btn.innerHTML = '<i class="fas fa-sync-alt"></i> Refresh';
+            }
+        }
+
+        async function fetchHistoricalRates(dateString) {
+            try {
+                const url = `https://api.frankfurter.dev/v1/${dateString}?from=USD`;
+                const response = await fetch(url);
+                if(!response.ok) throw new Error("History API error");
+                const data = await response.json();
+                if(data && data.rates) {
+                    return {
+                        USD: 1,
+                        PLN: data.rates.PLN || appData.liveRates.PLN,
+                        SAR: data.rates.SAR || 3.75 
+                    };
+                }
+            } catch (e) {
+                console.warn("Could not fetch history, using live rates as fallback", e);
+            }
+            return null;
+        }
+
+        function updateRateInputs() {
+            document.getElementById('ratePLN').value = appData.rates.PLN;
+            document.getElementById('rateSAR').value = appData.rates.SAR;
+            
+            const label = document.getElementById('rateInfoText');
+            if(activeSnapshotId) {
+                const snap = appData.history.find(h => h.id === activeSnapshotId);
+                label.innerText = `Historical Rates: ${new Date(snap.date).toLocaleDateString()}`;
+                label.className = "text-[10px] text-orange-600 mt-2 text-right font-bold";
+            } else {
+                label.innerText = "Live Rates";
+                label.className = "text-[10px] text-gray-400 mt-2 text-right italic";
+            }
+        }
+
+        function updateRatesManual() {
+            appData.rates.PLN = parseFloat(document.getElementById('ratePLN').value);
+            appData.rates.SAR = parseFloat(document.getElementById('rateSAR').value);
+            
+            if(activeSnapshotId) {
+                const snap = appData.history.find(h => h.id === activeSnapshotId);
+                if(snap) {
+                    snap.rates = { ...appData.rates };
+                    recalculateSnapshotTotal(activeSnapshotId);
+                }
+            } else {
+                appData.liveRates = { ...appData.rates };
+            }
+            saveData();
+            renderAll();
+        }
+
+        // --- CORE FUNCTIONS ---
+        function saveData() {
+            localStorage.setItem('wealthTrackerData', JSON.stringify(appData));
+        }
+
+        function getBaseCurrency() {
+            return document.getElementById('baseCurrency').value;
+        }
+
+        function convert(amount, fromCurr, toCurr) {
+            const usdVal = amount / appData.rates[fromCurr];
+            return usdVal * appData.rates[toCurr];
+        }
+
+        function getAssetValueBase(asset, base) {
+            return convert(asset.amount, asset.currency, base);
+        }
+
+        function getAssetIncomeBase(asset, base) {
+            let monthlyIncomeOrig = 0;
+            if(asset.yieldType === 'percent_year') {
+                monthlyIncomeOrig = (asset.amount * (asset.yieldValue / 100)) / 12;
+            } else if (asset.yieldType === 'fixed_month') {
+                monthlyIncomeOrig = asset.yieldValue;
+            }
+            return convert(monthlyIncomeOrig, asset.currency, base);
+        }
+
+        // --- COLOR ASSIGNMENT ---
+        function updateCategoryColors(assets) {
+            const categories = [...new Set(assets.map(a => a.category))].sort();
+            categoryColorMap = {};
+            categories.forEach((cat, index) => {
+                categoryColorMap[cat] = CHART_COLORS[index % CHART_COLORS.length];
+            });
+        }
+
+        function getCategoryColor(cat) {
+            return categoryColorMap[cat] || '#ccc';
+        }
+
+        // --- SORTING ---
+        function setSort(key) {
+            if(sortState.key === key) {
+                sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortState.key = key;
+                sortState.dir = 'asc';
+            }
+            renderAll();
+        }
+
+        function updateSortIcons() {
+            ['category', 'subcategory', 'valueBase', 'income'].forEach(k => {
+                const el = document.getElementById('sortIcon-' + k);
+                if(el) el.className = 'fas fa-sort text-xs text-gray-300 ml-1';
+            });
+            const activeEl = document.getElementById('sortIcon-' + sortState.key);
+            if(activeEl) {
+                activeEl.className = sortState.dir === 'asc' 
+                    ? 'fas fa-sort-up text-xs text-blue-600 ml-1' 
+                    : 'fas fa-sort-down text-xs text-blue-600 ml-1';
+            }
+        }
+
+        // --- SELECTION LOGIC ---
+        function toggleSelect(id, checked) {
+            if(checked) selectedIds.add(id);
+            else selectedIds.delete(id);
+            renderSelectionChart(); 
+        }
+
+        function toggleSelectAll(checked) {
+            const sourceAssets = activeSnapshotId 
+                ? appData.history.find(h => h.id === activeSnapshotId).assets 
+                : appData.currentAssets;
+            
+            if(checked) {
+                sourceAssets.forEach(a => selectedIds.add(a.id));
+            } else {
+                selectedIds.clear();
+            }
+            document.querySelectorAll('.asset-checkbox').forEach(cb => cb.checked = checked);
+            renderSelectionChart();
+        }
+
+        function setChartMode(mode) {
+            selectionChartMode = mode;
+            const btnCat = document.getElementById('mode-category');
+            const btnItem = document.getElementById('mode-item');
+            
+            if(mode === 'category') {
+                btnCat.className = "px-3 py-1 rounded bg-white shadow text-indigo-700 font-semibold transition";
+                btnItem.className = "px-3 py-1 rounded text-indigo-600 hover:text-indigo-800 transition";
+            } else {
+                btnItem.className = "px-3 py-1 rounded bg-white shadow text-indigo-700 font-semibold transition";
+                btnCat.className = "px-3 py-1 rounded text-indigo-600 hover:text-indigo-800 transition";
+            }
+            renderSelectionChart();
+        }
+
+        // --- PRESETS LOGIC ---
+        function savePreset() {
+            const nameInput = document.getElementById('newPresetName');
+            const name = nameInput.value.trim();
+            if(!name) { alert("Please name your preset."); return; }
+            if(selectedIds.size === 0) { alert("No assets selected to save."); return; }
+
+            const newPreset = {
+                id: Date.now(),
+                name: name,
+                assetIds: Array.from(selectedIds)
+            };
+            
+            appData.presets.push(newPreset);
+            saveData();
+            renderPresets();
+            nameInput.value = '';
+        }
+
+        function loadPreset(id) {
+            const preset = appData.presets.find(p => p.id === id);
+            if(!preset) return;
+
+            // Update Selection
+            selectedIds = new Set(preset.assetIds);
+            
+            // Update UI
+            document.querySelectorAll('.asset-checkbox').forEach(cb => {
+                // The onchange handler for checkbox is basically toggleSelect(id, checked)
+                // We need to map row ID to checkbox
+                // Since we don't have direct row ref, we re-render checkboxes
+            });
+            
+            // Easier way: re-render the whole table to check the boxes correctly
+            // This is fast enough for this app size
+            renderAll(); 
+        }
+
+        function deletePreset(id, event) {
+            event.stopPropagation(); // prevent triggering loadPreset
+            if(!confirm("Delete this preset?")) return;
+            appData.presets = appData.presets.filter(p => p.id !== id);
+            saveData();
+            renderPresets();
+        }
+
+        function renderPresets() {
+            const container = document.getElementById('presetList');
+            container.innerHTML = '';
+            
+            appData.presets.forEach(p => {
+                const chip = document.createElement('div');
+                chip.className = "preset-chip";
+                chip.onclick = () => loadPreset(p.id);
+                chip.innerHTML = `
+                    <span>${p.name}</span>
+                    <button onclick="deletePreset(${p.id}, event)" class="w-4 h-4 rounded-full hover:bg-indigo-100 flex items-center justify-center text-indigo-400 hover:text-red-500">
+                        <i class="fas fa-times text-[10px]"></i>
+                    </button>
+                `;
+                container.appendChild(chip);
+            });
+        }
+
+        // --- ASSET MANAGEMENT ---
+        function handleAssetSubmit(e) {
+            e.preventDefault();
+            const rawAsset = {
+                id: editModeId ? editModeId : Date.now(),
+                category: document.getElementById('inCat').value,
+                subcategory: document.getElementById('inSub').value,
+                currency: document.getElementById('inCurr').value,
+                amount: parseFloat(document.getElementById('inAmt').value),
+                yieldType: document.getElementById('inYieldType').value,
+                yieldValue: parseFloat(document.getElementById('inYieldVal').value) || 0
+            };
+
+            let targetList = activeSnapshotId 
+                ? appData.history.find(h => h.id === activeSnapshotId).assets 
+                : appData.currentAssets;
+
+            if (editModeId) {
+                const index = targetList.findIndex(a => a.id === editModeId);
+                if(index !== -1) targetList[index] = rawAsset;
+            } else {
+                targetList.push(rawAsset);
+            }
+
+            if (activeSnapshotId) recalculateSnapshotTotal(activeSnapshotId);
+
+            cancelEdit();
+            saveData();
+            renderAll();
+        }
+
+        function startEditAsset(id) {
+            let targetList = activeSnapshotId 
+                ? appData.history.find(h => h.id === activeSnapshotId).assets 
+                : appData.currentAssets;
+                
+            const asset = targetList.find(a => a.id === id);
+            if(!asset) return;
+
+            document.getElementById('inCat').value = asset.category;
+            document.getElementById('inSub').value = asset.subcategory;
+            document.getElementById('inCurr').value = asset.currency;
+            document.getElementById('inAmt').value = asset.amount;
+            document.getElementById('inYieldType').value = asset.yieldType;
+            document.getElementById('inYieldVal').value = asset.yieldValue;
+
+            editModeId = id;
+            const btn = document.getElementById('btnSubmit');
+            btn.innerText = "Update Asset";
+            btn.className = "bg-green-600 text-white flex-1 py-2 rounded hover:bg-green-700 font-bold shadow-sm";
+            document.getElementById('btnCancelEdit').classList.remove('hidden');
+
+            document.getElementById('assetForm').scrollIntoView({behavior: 'smooth'});
+        }
+
+        function cancelEdit() {
+            document.getElementById('assetForm').reset();
+            editModeId = null;
+            const btn = document.getElementById('btnSubmit');
+            btn.innerText = "Add Asset";
+            btn.className = "bg-blue-600 text-white flex-1 py-2 rounded hover:bg-blue-700 font-bold shadow-sm";
+            document.getElementById('btnCancelEdit').classList.add('hidden');
+        }
+
+        function deleteAsset(id) {
+            if(!confirm("Remove this asset?")) return;
+            if (activeSnapshotId) {
+                const snap = appData.history.find(h => h.id === activeSnapshotId);
+                snap.assets = snap.assets.filter(a => a.id !== id);
+                recalculateSnapshotTotal(activeSnapshotId);
+            } else {
+                appData.currentAssets = appData.currentAssets.filter(a => a.id !== id);
+            }
+            if(editModeId === id) cancelEdit();
+            selectedIds.delete(id); // Remove from selection if deleted
+            saveData();
+            renderAll();
+        }
+
+        function recalculateSnapshotTotal(snapId) {
+            const snap = appData.history.find(h => h.id === snapId);
+            let totalUSD = 0;
+            snap.assets.forEach(a => {
+                totalUSD += convert(a.amount, a.currency, 'USD');
+            });
+            snap.usdValue = totalUSD;
+        }
+
+        // --- HISTORY MODE ---
+        async function enterHistoryMode(snapId) {
+            toggleLoading(true, "Loading Snapshot...");
+            activeSnapshotId = snapId;
+            cancelEdit();
+            selectedIds.clear(); 
+            renderPresets(); // Re-render to clear selection visuals if needed
+            
+            const snap = appData.history.find(h => h.id === snapId);
+
+            if(snap.rates) {
+                appData.rates = { ...snap.rates };
+            } else {
+                const histRates = await fetchHistoricalRates(snap.date.split('T')[0]);
+                if(histRates) {
+                    snap.rates = histRates;
+                    appData.rates = { ...histRates };
+                    saveData();
+                } else {
+                    appData.rates = { ...appData.liveRates };
+                }
+            }
+            
+            document.body.classList.add('history-mode');
+            const dateStr = new Date(snap.date).toLocaleDateString();
+            document.getElementById('pageTitle').innerText = "Editing Snapshot: " + dateStr;
+            document.getElementById('pageSubtitle').innerText = "Rates and values reflect this past date.";
+            document.getElementById('listTitle').innerText = "Assets in Snapshot (" + dateStr + ")";
+            document.getElementById('mainIcon').classList.replace('text-blue-600', 'text-orange-600');
+            document.getElementById('btnSnapshot').classList.add('hidden');
+            document.getElementById('btnExitHistory').classList.remove('hidden');
+            
+            updateRateInputs();
+            renderAll();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            toggleLoading(false);
+        }
+
+        function exitHistoryMode() {
+            activeSnapshotId = null;
+            cancelEdit();
+            selectedIds.clear();
+            
+            appData.rates = { ...appData.liveRates };
+            
+            document.body.classList.remove('history-mode');
+            document.getElementById('pageTitle').innerText = "My Wealth Tracker";
+            document.getElementById('pageSubtitle').innerText = "Track savings, real estate, and crypto yields.";
+            document.getElementById('listTitle').innerText = "Current Assets";
+            document.getElementById('mainIcon').classList.replace('text-orange-600', 'text-blue-600');
+            document.getElementById('btnSnapshot').classList.remove('hidden');
+            document.getElementById('btnExitHistory').classList.add('hidden');
+            
+            updateRateInputs();
+            renderAll();
+        }
+
+        async function updateSnapshotDate(id, newDateStr) {
+            const snap = appData.history.find(h => h.id === id);
+            if(snap && newDateStr) {
+                toggleLoading(true, "Fetching historical rates...");
+                snap.date = new Date(newDateStr).toISOString();
+                
+                const newRates = await fetchHistoricalRates(newDateStr);
+                if(newRates) {
+                    snap.rates = newRates;
+                    if(activeSnapshotId === id) {
+                        appData.rates = { ...newRates };
+                        updateRateInputs();
+                    }
+                    const tempRates = appData.rates;
+                    appData.rates = newRates;
+                    recalculateSnapshotTotal(id);
+                    appData.rates = tempRates; 
+                }
+
+                saveData();
+                renderAll(); 
+                toggleLoading(false);
+            }
+        }
+
+        async function addHistoricalRecord() {
+            toggleLoading(true, "Creating past record...");
+            const d = new Date();
+            d.setDate(d.getDate() - 1);
+            const dateStr = d.toISOString().split('T')[0];
+
+            const histRates = await fetchHistoricalRates(dateStr) || { ...appData.liveRates };
+
+            const newSnap = {
+                id: Date.now(),
+                date: d.toISOString(),
+                usdValue: 0,
+                rates: histRates,
+                assets: []
+            };
+            
+            appData.history.push(newSnap);
+            saveData();
+            
+            await enterHistoryMode(newSnap.id);
+            toggleLoading(false);
+        }
+
+        // --- RENDERING ---
+        function renderAll() {
+            const base = getBaseCurrency();
+            document.getElementById('displayCurrency1').innerText = base;
+            document.getElementById('displayCurrency2').innerText = base;
+            document.getElementById('selectionCurrency').innerText = base;
+            document.getElementById('selectAllCheckbox').checked = false;
+
+            updateSortIcons();
+
+            const tbody = document.getElementById('assetTableBody');
+            tbody.innerHTML = '';
+            
+            let sourceAssets = activeSnapshotId 
+                ? appData.history.find(h => h.id === activeSnapshotId).assets 
+                : appData.currentAssets;
+
+            updateCategoryColors(sourceAssets);
+
+            const sortedAssets = [...sourceAssets].sort((a, b) => {
+                let valA, valB;
+                if (sortState.key === 'valueBase') {
+                    valA = getAssetValueBase(a, base);
+                    valB = getAssetValueBase(b, base);
+                } else if (sortState.key === 'income') {
+                    valA = getAssetIncomeBase(a, base);
+                    valB = getAssetIncomeBase(b, base);
+                } else {
+                    valA = a[sortState.key];
+                    valB = b[sortState.key];
+                }
+                if (typeof valA === 'string') {
+                    valA = valA.toLowerCase();
+                    valB = valB.toLowerCase();
+                }
+                if (valA < valB) return sortState.dir === 'asc' ? -1 : 1;
+                if (valA > valB) return sortState.dir === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            let totalWealth = 0;
+            let totalMonthlyIncome = 0;
+            let categoryTotals = {};
+            const cats = new Set();
+
+            sortedAssets.forEach(asset => {
+                cats.add(asset.category);
+                const valInBase = getAssetValueBase(asset, base);
+                totalWealth += valInBase;
+                if(!categoryTotals[asset.category]) categoryTotals[asset.category] = 0;
+                categoryTotals[asset.category] += valInBase;
+
+                const monthlyIncomeBase = getAssetIncomeBase(asset, base);
+                totalMonthlyIncome += monthlyIncomeBase;
+
+                const isSelected = selectedIds.has(asset.id);
+                const catColor = getCategoryColor(asset.category);
+
+                const tr = document.createElement('tr');
+                tr.className = "border-b hover:bg-opacity-50 transition " + (activeSnapshotId ? "hover:bg-orange-100" : "hover:bg-gray-50");
+                tr.innerHTML = `
+                    <td class="p-3 text-center">
+                        <input type="checkbox" class="asset-checkbox cursor-pointer" 
+                            onchange="toggleSelect(${asset.id}, this.checked)" 
+                            ${isSelected ? 'checked' : ''}>
+                    </td>
+                    <td class="p-3 font-medium text-gray-700">
+                        <span style="background-color: ${catColor}" class="w-2.5 h-2.5 rounded-full inline-block mr-2" title="${asset.category}"></span>
+                        ${asset.category}
+                    </td>
+                    <td class="p-3 text-gray-600">${asset.subcategory}</td>
+                    <td class="p-3 text-right text-gray-500 text-xs">${asset.amount.toLocaleString()} ${asset.currency}</td>
+                    <td class="p-3 text-right font-bold text-gray-800">${valInBase.toLocaleString(undefined, {maximumFractionDigits:0})} ${base}</td>
+                    <td class="p-3 text-right text-green-600">+${monthlyIncomeBase.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                    <td class="p-3 text-center flex justify-center gap-2">
+                        <button onclick="startEditAsset(${asset.id})" class="text-blue-400 hover:text-blue-600" title="Edit"><i class="fas fa-pen"></i></button>
+                        <button onclick="deleteAsset(${asset.id})" class="text-gray-400 hover:text-red-500" title="Delete"><i class="fas fa-trash"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('displayTotalWealth').innerText = totalWealth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            document.getElementById('displayTotalIncome').innerText = totalMonthlyIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const dl = document.getElementById('catList');
+            dl.innerHTML = '';
+            cats.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                dl.appendChild(opt);
+            });
+
+            renderCharts(categoryTotals, totalWealth);
+            renderSelectionChart(); 
+            renderHistoryList();
+        }
+
+        // --- CHART RENDERING ---
+
+        function renderSelectionChart() {
+            const base = getBaseCurrency();
+            const sourceAssets = activeSnapshotId 
+                ? appData.history.find(h => h.id === activeSnapshotId).assets 
+                : appData.currentAssets;
+
+            // Filter
+            const selectedAssets = sourceAssets.filter(a => selectedIds.has(a.id));
+            
+            let selectionTotal = 0;
+            let chartTotals = {};
+
+            selectedAssets.forEach(a => {
+                const val = getAssetValueBase(a, base);
+                selectionTotal += val;
+                
+                // Aggregate based on mode
+                const key = selectionChartMode === 'category' ? a.category : a.subcategory;
+                
+                if(!chartTotals[key]) chartTotals[key] = 0;
+                chartTotals[key] += val;
+            });
+
+            // Update Text
+            document.getElementById('selectionTotal').innerText = selectionTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            
+            // Show hint if empty
+            const hint = document.getElementById('selectionHint');
+            if(selectedIds.size === 0) {
+                hint.classList.remove('hidden');
+                if(selectChart) selectChart.clear();
+            } else {
+                hint.classList.add('hidden');
+            }
+
+            // Render Chart
+            const ctx = document.getElementById('selectionChart').getContext('2d');
+            const labels = Object.keys(chartTotals);
+            const data = Object.values(chartTotals);
+
+            let colors;
+            if (selectionChartMode === 'category') {
+                colors = labels.map(l => getCategoryColor(l));
+            } else {
+                colors = labels.map((_, i) => CHART_COLORS[i % CHART_COLORS.length]);
+            }
+
+            if(selectChart) selectChart.destroy();
+            selectChart = new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { 
+                        legend: { position: 'right', labels: { boxWidth: 10, font: {size: 9} } },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((value / total) * 100).toFixed(1) + "%";
+                                    return context.label + ': ' + value.toLocaleString() + ' ' + base + ' (' + percentage + ')';
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderCharts(catTotals, currentTotal) {
+            const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
+            const labels = Object.keys(catTotals);
+            const data = Object.values(catTotals);
+            
+            const colors = labels.map(l => getCategoryColor(l));
+
+            if(allocChart) allocChart.destroy();
+            allocChart = new Chart(ctxAlloc, {
+                type: 'doughnut',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: {size: 10} } } }
+                }
+            });
+
+            const ctxHist = document.getElementById('historyChart').getContext('2d');
+            const base = getBaseCurrency();
+
+            // Prepare Data
+            let histData = [...appData.history];
+            let liveTotalUSD = 0;
+            appData.currentAssets.forEach(a => {
+                const liveRate = appData.liveRates[a.currency];
+                const usd = a.amount / liveRate;
+                liveTotalUSD += usd;
+            });
+
+            let chartPoints = [...histData];
+            chartPoints.push({ date: new Date().toISOString(), usdValue: liveTotalUSD, isLive: true });
+            
+            chartPoints.sort((a,b) => new Date(a.date) - new Date(b.date));
+
+            const histLabels = chartPoints.map(h => h.isLive ? 'Now' : new Date(h.date).toLocaleDateString(undefined, {month:'short', day:'numeric'}));
+            
+            const histValues = chartPoints.map(h => {
+                const valUSD = h.usdValue || 0;
+                const rateToUse = appData.liveRates[base] || 1; 
+                const valBase = valUSD * rateToUse; 
+                return Math.round(valBase * 100) / 100;
+            });
+
+            if(histChart) histChart.destroy();
+            histChart = new Chart(ctxHist, {
+                type: 'line',
+                data: {
+                    labels: histLabels,
+                    datasets: [{
+                        label: 'Net Worth',
+                        data: histValues,
+                        borderColor: activeSnapshotId ? '#ea580c' : '#3B82F6',
+                        backgroundColor: activeSnapshotId ? 'rgba(234, 88, 12, 0.1)' : 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.3,
+                        fill: true,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: { legend: { display: false } },
+                    scales: { 
+                        y: { 
+                            beginAtZero: false, 
+                            grid: { color: '#f3f4f6' },
+                            ticks: {
+                                callback: function(value) {
+                                    return new Intl.NumberFormat('en-US', {
+                                        notation: "compact",
+                                        compactDisplay: "short"
+                                    }).format(value);
+                                }
+                            }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        function renderHistoryList() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            const base = getBaseCurrency();
+            const sortedHist = [...appData.history].sort((a,b) => new Date(b.date) - new Date(a.date));
+
+            sortedHist.forEach(h => {
+                const rateToUse = appData.liveRates[base];
+                const val = (h.usdValue || 0) * rateToUse;
+                
+                const isActive = h.id === activeSnapshotId;
+                const d = new Date(h.date);
+                const dateInputVal = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+
+                const div = document.createElement('div');
+                div.className = `flex justify-between items-center p-2 rounded border text-sm transition ${isActive ? 'bg-orange-100 border-orange-300 ring-2 ring-orange-400' : 'bg-white border-gray-100 hover:bg-gray-50'}`;
+                
+                div.innerHTML = `
+                    <div class="flex flex-col">
+                        <input type="date" value="${dateInputVal}" onchange="updateSnapshotDate(${h.id}, this.value)" class="bg-transparent border-none text-gray-700 font-bold text-xs p-0 focus:ring-0 cursor-pointer mb-1">
+                        <div class="text-xs text-gray-500">${h.assets.length} assets</div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="font-bold text-gray-800">${val.toLocaleString(undefined, {maximumFractionDigits:0})} ${base}</span>
+                        ${isActive 
+                            ? `<span class="text-xs font-bold text-orange-600 px-2 py-1 bg-white rounded-full">Editing</span>`
+                            : `<button onclick="enterHistoryMode(${h.id})" class="text-blue-500 hover:text-blue-700 text-xs font-bold border border-blue-200 px-2 py-1 rounded hover:bg-blue-50">Edit</button>`
+                        }
+                        ${!isActive ? `<button onclick="deleteHistory(${h.id})" class="text-gray-300 hover:text-red-500"><i class="fas fa-times"></i></button>` : ''}
+                    </div>
+                `;
+                list.appendChild(div);
+            });
+
+            if(sortedHist.length === 0) {
+                list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">No history saved yet.</div>';
+            }
+        }
+
+        function archiveMonth() {
+            if(!confirm("Snapshot current assets to history?")) return;
+            let totalUSD = 0;
+            const currentRates = appData.liveRates; 
+            appData.currentAssets.forEach(a => {
+                totalUSD += a.amount / currentRates[a.currency];
+            });
+
+            const snapshot = {
+                id: Date.now(),
+                date: new Date().toISOString(),
+                usdValue: totalUSD,
+                rates: { ...appData.liveRates }, 
+                assets: JSON.parse(JSON.stringify(appData.currentAssets))
+            };
+            appData.history.push(snapshot);
+            saveData();
+            renderAll();
+        }
+
+        function deleteHistory(id) {
+            if(!confirm("Delete this snapshot?")) return;
+            appData.history = appData.history.filter(h => h.id !== id);
+            saveData();
+            renderAll();
+        }
+
+        // --- IMPORT / EXPORT ---
+        function exportData() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(appData));
+            const node = document.createElement('a');
+            node.setAttribute("href", dataStr);
+            node.setAttribute("download", "wealth_data_" + new Date().toISOString().slice(0,10) + ".json");
+            document.body.appendChild(node);
+            node.click();
+            node.remove();
+        }
+        function importData(input) {
+            const file = input.files[0];
+            if(!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const loaded = JSON.parse(e.target.result);
+                    if(confirm("Overwrite current data?")) {
+                        appData = loaded;
+                        if(!appData.history) appData.history = [];
+                        if(!appData.rates) appData.rates = {...DEFAULT_RATES};
+                        if(!appData.liveRates) appData.liveRates = {...appData.rates};
+                        
+                        saveData();
+                        renderAll();
+                    }
+                } catch(err) { alert("Invalid JSON"); }
+            };
+            reader.readAsText(file);
+        }
+    </script>
+</body>
+</html>
