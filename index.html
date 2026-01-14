@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Category Selection</title>
+    <title>Wealth Tracker - Percentage Column</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -185,6 +185,9 @@
                                 <th class="p-3 text-right">Value (Orig)</th>
                                 <th class="p-3 text-right sortable" onclick="setSort('valueBase')">
                                     Value (Base) <i id="sortIcon-valueBase" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                </th>
+                                <th class="p-3 text-right text-gray-500 font-semibold text-xs whitespace-nowrap">
+                                    % of Total
                                 </th>
                                 <th class="p-3 text-right sortable" onclick="setSort('income')">
                                     Mth. Income <i id="sortIcon-income" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
@@ -490,21 +493,16 @@
                 ? appData.history.find(h => h.id === activeSnapshotId).assets 
                 : appData.currentAssets;
 
-            // Find all assets in this category
             const catAssets = sourceAssets.filter(a => a.category === catName);
             if (catAssets.length === 0) return;
 
-            // Check if all are currently selected
             const allSelected = catAssets.every(a => selectedIds.has(a.id));
 
             if (allSelected) {
-                // If all selected, deselect all of them
                 catAssets.forEach(a => selectedIds.delete(a.id));
             } else {
-                // Otherwise, select all of them
                 catAssets.forEach(a => selectedIds.add(a.id));
             }
-            // Re-render to update checkboxes and chart
             renderAll();
         }
 
@@ -787,6 +785,15 @@
 
             updateCategoryColors(sourceAssets);
 
+            // Calculate total wealth for percentage calculation
+            let totalWealth = 0;
+            sourceAssets.forEach(asset => {
+                totalWealth += getAssetValueBase(asset, base);
+            });
+
+            // Update Total Wealth Display
+            document.getElementById('displayTotalWealth').innerText = totalWealth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
             const sortedAssets = [...sourceAssets].sort((a, b) => {
                 let valA, valB;
                 if (sortState.key === 'valueBase') {
@@ -808,7 +815,6 @@
                 return 0;
             });
 
-            let totalWealth = 0;
             let totalMonthlyIncome = 0;
             let categoryTotals = {};
             const cats = new Set();
@@ -816,7 +822,8 @@
             sortedAssets.forEach(asset => {
                 cats.add(asset.category);
                 const valInBase = getAssetValueBase(asset, base);
-                totalWealth += valInBase;
+                
+                // Track Category
                 if(!categoryTotals[asset.category]) categoryTotals[asset.category] = 0;
                 categoryTotals[asset.category] += valInBase;
 
@@ -825,6 +832,9 @@
 
                 const isSelected = selectedIds.has(asset.id);
                 const catColor = getCategoryColor(asset.category);
+
+                // Calculate Percentage
+                const percentage = totalWealth > 0 ? ((valInBase / totalWealth) * 100).toFixed(2) + "%" : "0.00%";
 
                 const tr = document.createElement('tr');
                 tr.className = "border-b hover:bg-opacity-50 transition " + (activeSnapshotId ? "hover:bg-orange-100" : "hover:bg-gray-50");
@@ -841,6 +851,7 @@
                     <td class="p-3 text-gray-600">${asset.subcategory}</td>
                     <td class="p-3 text-right text-gray-500 text-xs">${asset.amount.toLocaleString()} ${asset.currency}</td>
                     <td class="p-3 text-right font-bold text-gray-800">${valInBase.toLocaleString(undefined, {maximumFractionDigits:0})} ${base}</td>
+                    <td class="p-3 text-right text-gray-500 text-xs font-semibold">${percentage}</td>
                     <td class="p-3 text-right text-green-600">+${monthlyIncomeBase.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
                     <td class="p-3 text-center flex justify-center gap-2">
                         <button onclick="startEditAsset(${asset.id})" class="text-blue-400 hover:text-blue-600" title="Edit"><i class="fas fa-pen"></i></button>
@@ -850,7 +861,6 @@
                 tbody.appendChild(tr);
             });
 
-            document.getElementById('displayTotalWealth').innerText = totalWealth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             document.getElementById('displayTotalIncome').innerText = totalMonthlyIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
             const dl = document.getElementById('catList');
