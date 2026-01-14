@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Wide Layout</title>
+    <title>Wealth Tracker - Ranked Highlighting</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -819,11 +819,10 @@
             let categoryTotals = {};
             const cats = new Set();
 
-            sortedAssets.forEach(asset => {
+            sortedAssets.forEach((asset, index) => {
                 cats.add(asset.category);
                 const valInBase = getAssetValueBase(asset, base);
                 
-                // Track Category
                 if(!categoryTotals[asset.category]) categoryTotals[asset.category] = 0;
                 categoryTotals[asset.category] += valInBase;
 
@@ -832,12 +831,16 @@
 
                 const isSelected = selectedIds.has(asset.id);
                 const catColor = getCategoryColor(asset.category);
-
-                // Calculate Percentage
                 const percentage = totalWealth > 0 ? ((valInBase / totalWealth) * 100).toFixed(2) + "%" : "0.00%";
 
+                // Ranked Highlighting
+                let rowBg = "";
+                if(index < 3) rowBg = "bg-green-50 hover:bg-green-100";
+                else if(index < 10) rowBg = "bg-yellow-50 hover:bg-yellow-100";
+                else rowBg = activeSnapshotId ? "hover:bg-orange-100" : "hover:bg-gray-50";
+
                 const tr = document.createElement('tr');
-                tr.className = "border-b hover:bg-opacity-50 transition " + (activeSnapshotId ? "hover:bg-orange-100" : "hover:bg-gray-50");
+                tr.className = `border-b transition ${rowBg}`;
                 tr.innerHTML = `
                     <td class="p-3 text-center">
                         <input type="checkbox" class="asset-checkbox cursor-pointer" 
