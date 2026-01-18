@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Ranked Highlighting</title>
+    <title>Wealth Tracker - Selection Yields</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -233,10 +233,21 @@
                     </div>
                 </div>
 
-                <div class="text-center mb-4">
-                    <span class="text-xs text-gray-500">Selected Total:</span>
+                <div class="text-center mb-2">
+                    <span class="text-xs text-gray-500">Selected Value:</span>
                     <div class="text-2xl font-bold text-indigo-800">
                         <span id="selectionTotal">0.00</span> <span id="selectionCurrency" class="text-sm font-normal">USD</span>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-2 mb-4 bg-white/60 p-2 rounded-lg border border-indigo-100">
+                    <div class="text-center border-r border-indigo-100">
+                        <div class="text-[10px] text-gray-500 uppercase font-semibold">Yearly Yield</div>
+                        <div class="text-sm font-bold text-green-600"><span id="selYearly">0.00</span></div>
+                    </div>
+                    <div class="text-center">
+                        <div class="text-[10px] text-gray-500 uppercase font-semibold">Daily Yield</div>
+                        <div class="text-sm font-bold text-green-600"><span id="selDaily">0.00</span></div>
                     </div>
                 </div>
                 
@@ -891,22 +902,31 @@
             const selectedAssets = sourceAssets.filter(a => selectedIds.has(a.id));
             
             let selectionTotal = 0;
+            let selectionMonthlyIncome = 0;
             let chartTotals = {};
 
             selectedAssets.forEach(a => {
                 const val = getAssetValueBase(a, base);
                 selectionTotal += val;
                 
+                const incomeBase = getAssetIncomeBase(a, base);
+                selectionMonthlyIncome += incomeBase;
+
                 // Aggregate based on mode
                 const key = selectionChartMode === 'category' ? a.category : a.subcategory;
-                
                 if(!chartTotals[key]) chartTotals[key] = 0;
                 chartTotals[key] += val;
             });
 
-            // Update Text
+            // Update Totals
             document.getElementById('selectionTotal').innerText = selectionTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
+            // Update Yields
+            const yearly = selectionMonthlyIncome * 12;
+            const daily = yearly / 365;
+            document.getElementById('selYearly').innerText = yearly.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " " + base;
+            document.getElementById('selDaily').innerText = daily.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " " + base;
+
             // Show hint if empty
             const hint = document.getElementById('selectionHint');
             if(selectedIds.size === 0) {
