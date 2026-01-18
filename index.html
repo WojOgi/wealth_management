@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Selection Yields</title>
+    <title>Wealth Tracker - Selection Share</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -237,6 +237,9 @@
                     <span class="text-xs text-gray-500">Selected Value:</span>
                     <div class="text-2xl font-bold text-indigo-800">
                         <span id="selectionTotal">0.00</span> <span id="selectionCurrency" class="text-sm font-normal">USD</span>
+                    </div>
+                    <div class="text-xs font-semibold text-indigo-500 mt-1" id="selectionShareText">
+                        (0.00% of Total Net Worth)
                     </div>
                 </div>
 
@@ -886,13 +889,13 @@
             });
 
             renderCharts(categoryTotals, totalWealth);
-            renderSelectionChart(); 
+            renderSelectionChart(totalWealth); // Pass total wealth for calc
             renderHistoryList();
         }
 
         // --- CHART RENDERING ---
 
-        function renderSelectionChart() {
+        function renderSelectionChart(globalTotalWealth) {
             const base = getBaseCurrency();
             const sourceAssets = activeSnapshotId 
                 ? appData.history.find(h => h.id === activeSnapshotId).assets 
@@ -912,22 +915,33 @@
                 const incomeBase = getAssetIncomeBase(a, base);
                 selectionMonthlyIncome += incomeBase;
 
-                // Aggregate based on mode
                 const key = selectionChartMode === 'category' ? a.category : a.subcategory;
                 if(!chartTotals[key]) chartTotals[key] = 0;
                 chartTotals[key] += val;
             });
 
-            // Update Totals
+            // Update Value Text
             document.getElementById('selectionTotal').innerText = selectionTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
+            // Update Share % Text
+            let sharePercent = "0.00%";
+            // Fallback calculation if globalTotalWealth isn't passed (safety)
+            if(!globalTotalWealth) {
+                globalTotalWealth = 0;
+                sourceAssets.forEach(a => globalTotalWealth += getAssetValueBase(a, base));
+            }
+            
+            if(globalTotalWealth > 0) {
+                sharePercent = ((selectionTotal / globalTotalWealth) * 100).toFixed(2) + "%";
+            }
+            document.getElementById('selectionShareText').innerText = `(${sharePercent} of Total Net Worth)`;
+
             // Update Yields
             const yearly = selectionMonthlyIncome * 12;
             const daily = yearly / 365;
             document.getElementById('selYearly').innerText = yearly.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " " + base;
             document.getElementById('selDaily').innerText = daily.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " " + base;
 
-            // Show hint if empty
             const hint = document.getElementById('selectionHint');
             if(selectedIds.size === 0) {
                 hint.classList.remove('hidden');
