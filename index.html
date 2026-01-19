@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Selection Share</title>
+    <title>Wealth Tracker - Searchable</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -121,11 +121,20 @@
         <div class="lg:col-span-2">
             
             <div class="card p-6 mb-6 border border-gray-200">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-gray-700" id="listTitle">Current Assets</h2>
-                    <button id="btnSnapshot" onclick="archiveMonth()" class="text-sm bg-indigo-50 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-100 transition border border-indigo-100">
-                        <i class="fas fa-save"></i> Snapshot Month
-                    </button>
+                
+                <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 gap-4">
+                    <div class="flex items-center gap-3">
+                        <h2 class="text-xl font-bold text-gray-700" id="listTitle">Current Assets</h2>
+                        <button id="btnSnapshot" onclick="archiveMonth()" class="text-sm bg-indigo-50 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-100 transition border border-indigo-100">
+                            <i class="fas fa-save"></i> Snapshot Month
+                        </button>
+                    </div>
+                    
+                    <div class="relative w-full md:w-64">
+                        <input type="text" id="searchInput" placeholder="Search name or category..." oninput="renderAll()" 
+                            class="w-full pl-9 pr-3 py-2 border rounded-full text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                    </div>
                 </div>
 
                 <form id="assetForm" onsubmit="handleAssetSubmit(event)" class="bg-gray-50 p-4 rounded mb-6 grid grid-cols-1 md:grid-cols-6 gap-3 items-end border border-gray-200">
@@ -222,8 +231,7 @@
                 <h3 class="font-bold text-indigo-700 mb-2 text-center text-sm uppercase">Selection Analysis</h3>
                 
                 <div id="presetsContainer" class="mb-4 text-center">
-                    <div id="presetList" class="flex flex-wrap gap-2 justify-center">
-                        </div>
+                    <div id="presetList" class="flex flex-wrap gap-2 justify-center"></div>
                 </div>
 
                 <div class="flex justify-center mb-3">
@@ -267,7 +275,7 @@
             </div>
 
             <div class="card p-4">
-                <h3 class="font-bold text-gray-700 mb-4 text-center">Total Wealth Allocation</h3>
+                <h3 class="font-bold text-gray-700 mb-4 text-center">Wealth Allocation (Visible)</h3>
                 <canvas id="allocationChart"></canvas>
             </div>
             
@@ -281,7 +289,6 @@
     <script>
         // --- DATA STRUCTURE & STATE ---
         const DEFAULT_RATES = { USD: 1, PLN: 4.00, SAR: 3.75 };
-        // Consistent Color Palette
         const CHART_COLORS = [
             '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899', 
             '#6366F1', '#14B8A6', '#F97316', '#84CC16', '#06B6D4', '#64748B'
@@ -489,25 +496,40 @@
         }
 
         function toggleSelectAll(checked) {
+            // Select visible rows based on current filtering (search)
+            // We need to re-run the filtering logic here or store visible IDs
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
             const sourceAssets = activeSnapshotId 
                 ? appData.history.find(h => h.id === activeSnapshotId).assets 
                 : appData.currentAssets;
             
+            const visibleAssets = sourceAssets.filter(asset => 
+                asset.category.toLowerCase().includes(searchQuery) || 
+                asset.subcategory.toLowerCase().includes(searchQuery)
+            );
+
             if(checked) {
-                sourceAssets.forEach(a => selectedIds.add(a.id));
+                visibleAssets.forEach(a => selectedIds.add(a.id));
             } else {
-                selectedIds.clear();
+                // Deselect only the visible ones? Or clear all? 
+                // UX: Unchecking "Select All" usually clears the current view selection
+                visibleAssets.forEach(a => selectedIds.delete(a.id));
             }
-            document.querySelectorAll('.asset-checkbox').forEach(cb => cb.checked = checked);
-            renderSelectionChart();
+            renderAll(); // Re-render to update checkboxes
         }
 
         function toggleCategory(catName) {
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
             const sourceAssets = activeSnapshotId 
                 ? appData.history.find(h => h.id === activeSnapshotId).assets 
                 : appData.currentAssets;
 
-            const catAssets = sourceAssets.filter(a => a.category === catName);
+            // Filter visible items in this category
+            const catAssets = sourceAssets.filter(a => 
+                a.category === catName && 
+                (a.category.toLowerCase().includes(searchQuery) || a.subcategory.toLowerCase().includes(searchQuery))
+            );
+            
             if (catAssets.length === 0) return;
 
             const allSelected = catAssets.every(a => selectedIds.has(a.id));
@@ -661,7 +683,7 @@
                 appData.currentAssets = appData.currentAssets.filter(a => a.id !== id);
             }
             if(editModeId === id) cancelEdit();
-            selectedIds.delete(id); // Remove from selection if deleted
+            selectedIds.delete(id); 
             saveData();
             renderAll();
         }
@@ -783,9 +805,12 @@
         // --- RENDERING ---
         function renderAll() {
             const base = getBaseCurrency();
+            const searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
             document.getElementById('displayCurrency1').innerText = base;
             document.getElementById('displayCurrency2').innerText = base;
             document.getElementById('selectionCurrency').innerText = base;
+            // Update Select All checkbox state? Or just reset. Resetting is safer UI.
             document.getElementById('selectAllCheckbox').checked = false;
 
             updateSortIcons();
@@ -799,16 +824,21 @@
 
             updateCategoryColors(sourceAssets);
 
-            // Calculate total wealth for percentage calculation
-            let totalWealth = 0;
+            // Calculate GLOBAL Total Wealth (All assets, ignoring search)
+            let globalTotalWealth = 0;
             sourceAssets.forEach(asset => {
-                totalWealth += getAssetValueBase(asset, base);
+                globalTotalWealth += getAssetValueBase(asset, base);
             });
+            document.getElementById('displayTotalWealth').innerText = globalTotalWealth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-            // Update Total Wealth Display
-            document.getElementById('displayTotalWealth').innerText = totalWealth.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
+            // Filter by Search Query
+            const visibleAssets = sourceAssets.filter(asset => 
+                asset.category.toLowerCase().includes(searchQuery) || 
+                asset.subcategory.toLowerCase().includes(searchQuery)
+            );
 
-            const sortedAssets = [...sourceAssets].sort((a, b) => {
+            // Sort Visible Assets
+            visibleAssets.sort((a, b) => {
                 let valA, valB;
                 if (sortState.key === 'valueBase') {
                     valA = getAssetValueBase(a, base);
@@ -829,14 +859,26 @@
                 return 0;
             });
 
+            // Render Rows (Visible only)
             let totalMonthlyIncome = 0;
             let categoryTotals = {};
             const cats = new Set();
 
-            sortedAssets.forEach((asset, index) => {
+            // Populate Datalist with ALL categories (for adding new items)
+            const allCats = new Set(sourceAssets.map(a => a.category));
+            const dl = document.getElementById('catList');
+            dl.innerHTML = '';
+            allCats.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                dl.appendChild(opt);
+            });
+
+            visibleAssets.forEach((asset, index) => {
                 cats.add(asset.category);
                 const valInBase = getAssetValueBase(asset, base);
                 
+                // Track Category Total (of Visible items)
                 if(!categoryTotals[asset.category]) categoryTotals[asset.category] = 0;
                 categoryTotals[asset.category] += valInBase;
 
@@ -845,9 +887,11 @@
 
                 const isSelected = selectedIds.has(asset.id);
                 const catColor = getCategoryColor(asset.category);
-                const percentage = totalWealth > 0 ? ((valInBase / totalWealth) * 100).toFixed(2) + "%" : "0.00%";
+                
+                // % of Total (Global Total)
+                const percentage = globalTotalWealth > 0 ? ((valInBase / globalTotalWealth) * 100).toFixed(2) + "%" : "0.00%";
 
-                // Ranked Highlighting
+                // Ranked Highlighting (on Visible list)
                 let rowBg = "";
                 if(index < 3) rowBg = "bg-green-50 hover:bg-green-100";
                 else if(index < 10) rowBg = "bg-yellow-50 hover:bg-yellow-100";
@@ -878,18 +922,18 @@
                 tbody.appendChild(tr);
             });
 
+            // If empty search result
+            if(visibleAssets.length === 0 && sourceAssets.length > 0) {
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-400">No assets match your search.</td></tr>`;
+            }
+
             document.getElementById('displayTotalIncome').innerText = totalMonthlyIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
 
-            const dl = document.getElementById('catList');
-            dl.innerHTML = '';
-            cats.forEach(c => {
-                const opt = document.createElement('option');
-                opt.value = c;
-                dl.appendChild(opt);
-            });
-
-            renderCharts(categoryTotals, totalWealth);
-            renderSelectionChart(totalWealth); // Pass total wealth for calc
+            // Update Charts with Visible Data
+            renderCharts(categoryTotals);
+            
+            // Pass GLOBAL total to Selection Chart for % calc
+            renderSelectionChart(globalTotalWealth); 
             renderHistoryList();
         }
 
@@ -901,7 +945,6 @@
                 ? appData.history.find(h => h.id === activeSnapshotId).assets 
                 : appData.currentAssets;
 
-            // Filter
             const selectedAssets = sourceAssets.filter(a => selectedIds.has(a.id));
             
             let selectionTotal = 0;
@@ -920,23 +963,19 @@
                 chartTotals[key] += val;
             });
 
-            // Update Value Text
             document.getElementById('selectionTotal').innerText = selectionTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
             
-            // Update Share % Text
+            // Calc Share %
             let sharePercent = "0.00%";
-            // Fallback calculation if globalTotalWealth isn't passed (safety)
-            if(!globalTotalWealth) {
+            if(!globalTotalWealth) { // Safety recalculate if missing
                 globalTotalWealth = 0;
                 sourceAssets.forEach(a => globalTotalWealth += getAssetValueBase(a, base));
             }
-            
             if(globalTotalWealth > 0) {
                 sharePercent = ((selectionTotal / globalTotalWealth) * 100).toFixed(2) + "%";
             }
             document.getElementById('selectionShareText').innerText = `(${sharePercent} of Total Net Worth)`;
 
-            // Update Yields
             const yearly = selectionMonthlyIncome * 12;
             const daily = yearly / 365;
             document.getElementById('selYearly').innerText = yearly.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " " + base;
@@ -950,7 +989,6 @@
                 hint.classList.add('hidden');
             }
 
-            // Render Chart
             const ctx = document.getElementById('selectionChart').getContext('2d');
             const labels = Object.keys(chartTotals);
             const data = Object.values(chartTotals);
@@ -993,7 +1031,7 @@
             });
         }
 
-        function renderCharts(catTotals, currentTotal) {
+        function renderCharts(catTotals) {
             const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
             const labels = Object.keys(catTotals);
             const data = Object.values(catTotals);
@@ -1020,7 +1058,6 @@
             const ctxHist = document.getElementById('historyChart').getContext('2d');
             const base = getBaseCurrency();
 
-            // Prepare Data
             let histData = [...appData.history];
             let liveTotalUSD = 0;
             appData.currentAssets.forEach(a => {
