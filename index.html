@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Fixed Select All</title>
+    <title>Wealth Tracker - Sorted Charts</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
@@ -995,8 +995,11 @@
             }
 
             const ctx = document.getElementById('selectionChart').getContext('2d');
-            const labels = Object.keys(chartTotals);
-            const data = Object.values(chartTotals);
+            
+            // SORT BY VALUE DESCENDING
+            const sortedEntries = Object.entries(chartTotals).sort((a, b) => b[1] - a[1]);
+            const labels = sortedEntries.map(e => e[0]);
+            const data = sortedEntries.map(e => e[1]);
 
             let colors;
             if (selectionChartMode === 'category') {
@@ -1038,8 +1041,11 @@
 
         function renderCharts(catTotals) {
             const ctxAlloc = document.getElementById('allocationChart').getContext('2d');
-            const labels = Object.keys(catTotals);
-            const data = Object.values(catTotals);
+            
+            // SORT BY VALUE DESCENDING
+            const sortedEntries = Object.entries(catTotals).sort((a, b) => b[1] - a[1]);
+            const labels = sortedEntries.map(e => e[0]);
+            const data = sortedEntries.map(e => e[1]);
             
             const colors = labels.map(l => getCategoryColor(l));
 
@@ -1063,6 +1069,7 @@
             const ctxHist = document.getElementById('historyChart').getContext('2d');
             const base = getBaseCurrency();
 
+            // Prepare Data
             let histData = [...appData.history];
             let liveTotalUSD = 0;
             appData.currentAssets.forEach(a => {
