@@ -3,67 +3,212 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Sorted Charts</title>
+    <title>Wealth Tracker - Themed</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; transition: background-color 0.3s; }
-        .card { background: white; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .input-std { @apply border rounded px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-blue-500; }
+        /* --- THEME VARIABLES --- */
+        :root {
+            /* Default (Classic Light) */
+            --bg-app: #f3f4f6;
+            --bg-card: #ffffff;
+            --bg-input: #f9fafb;
+            --bg-hover: #f3f4f6;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-color: #2563eb; /* Blue-600 */
+            --accent-hover: #1d4ed8; /* Blue-700 */
+            --accent-text: #ffffff;
+            --success: #10b981;
+        }
+
+        /* Dark Mode */
+        [data-theme="dark"] {
+            --bg-app: #111827;
+            --bg-card: #1f2937;
+            --bg-input: #374151;
+            --bg-hover: #374151;
+            --text-main: #f9fafb;
+            --text-sub: #9ca3af;
+            --border-color: #374151;
+            --accent-color: #3b82f6;
+            --accent-hover: #60a5fa;
+            --accent-text: #ffffff;
+            --success: #34d399;
+        }
+
+        /* Midnight (Deep Blue) */
+        [data-theme="midnight"] {
+            --bg-app: #0f172a;
+            --bg-card: #1e293b;
+            --bg-input: #334155;
+            --bg-hover: #334155;
+            --text-main: #e2e8f0;
+            --text-sub: #94a3b8;
+            --border-color: #334155;
+            --accent-color: #8b5cf6; /* Violet */
+            --accent-hover: #a78bfa;
+            --accent-text: #ffffff;
+            --success: #4ade80;
+        }
+
+        /* Forest (Green/Nature) */
+        [data-theme="forest"] {
+            --bg-app: #ecfdf5;
+            --bg-card: #ffffff;
+            --bg-input: #f0fdf4;
+            --bg-hover: #d1fae5;
+            --text-main: #064e3b;
+            --text-sub: #047857;
+            --border-color: #a7f3d0;
+            --accent-color: #059669; /* Emerald */
+            --accent-hover: #047857;
+            --accent-text: #ffffff;
+            --success: #16a34a;
+        }
+
+        /* Ocean (Teal/Blue) */
+        [data-theme="ocean"] {
+            --bg-app: #f0f9ff;
+            --bg-card: #ffffff;
+            --bg-input: #e0f2fe;
+            --bg-hover: #bae6fd;
+            --text-main: #0c4a6e;
+            --text-sub: #0284c7;
+            --border-color: #bae6fd;
+            --accent-color: #0891b2; /* Cyan */
+            --accent-hover: #0e7490;
+            --accent-text: #ffffff;
+            --success: #0ea5e9;
+        }
+
+        /* --- GLOBAL UTILS --- */
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: var(--bg-app); 
+            color: var(--text-main);
+            transition: background-color 0.3s, color 0.3s; 
+        }
+        
+        .card { 
+            background-color: var(--bg-card); 
+            border: 1px solid var(--border-color);
+            border-radius: 0.5rem; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); 
+        }
+
+        .text-main { color: var(--text-main); }
+        .text-sub { color: var(--text-sub); }
+        
+        .input-std { 
+            background-color: var(--bg-input);
+            color: var(--text-main);
+            border: 1px solid var(--border-color); 
+            border-radius: 0.25rem; 
+            padding: 0.5rem 0.75rem; 
+            width: 100%; 
+            outline: none;
+        }
+        .input-std:focus { ring: 2px solid var(--accent-color); border-color: var(--accent-color); }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: var(--accent-text);
+            padding: 0.5rem 1rem;
+            border-radius: 0.25rem;
+            font-weight: bold;
+            transition: background-color 0.2s;
+        }
+        .btn-primary:hover { background-color: var(--accent-hover); }
+
         .fade-in { animation: fadeIn 0.3s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         
         /* History Mode Styles */
-        body.history-mode { background-color: #fff7ed; } 
-        .history-mode .card { border-color: #fdba74; }
-
+        body.history-mode { border-top: 8px solid #f97316; } 
+        
         /* Sortable Headers */
         th.sortable { cursor: pointer; user-select: none; transition: background-color 0.2s; }
-        th.sortable:hover { background-color: #f3f4f6; }
+        th.sortable:hover { background-color: var(--bg-hover); }
         
         /* Custom Date Input Styling */
-        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
-        input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
-
-        /* Loading Spinner Overlay */
-        #loadingOverlay { backdrop-filter: blur(2px); background: rgba(255,255,255,0.5); }
+        input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; filter: invert(0.5); }
+        
+        /* Loading Spinner */
+        #loadingOverlay { backdrop-filter: blur(2px); background: rgba(0,0,0,0.2); }
 
         /* Preset Chips */
-        .preset-chip { @apply flex items-center gap-1 bg-white border border-indigo-200 text-indigo-700 px-2 py-1 rounded-full text-xs font-semibold hover:bg-indigo-50 cursor-pointer transition shadow-sm; }
+        .preset-chip { 
+            display: flex; align-items: center; gap: 4px;
+            background-color: var(--bg-input); 
+            border: 1px solid var(--border-color); 
+            color: var(--text-sub); 
+            padding: 4px 8px; 
+            border-radius: 9999px; 
+            font-size: 0.75rem; 
+            font-weight: 600; 
+            cursor: pointer; 
+            transition: all 0.2s;
+        }
+        .preset-chip:hover { border-color: var(--accent-color); color: var(--accent-color); }
 
         /* Clickable Category Cell */
         .cat-cell { cursor: pointer; transition: background-color 0.2s; user-select: none; }
-        .cat-cell:hover { background-color: #f3f4f6; color: #4338ca; }
+        .cat-cell:hover { background-color: var(--bg-hover); color: var(--accent-color); }
+
+        /* Table Rows */
+        tr { border-bottom: 1px solid var(--border-color); }
+        tr:last-child { border-bottom: none; }
+        
+        /* Highlight Classes */
+        .hl-green { background-color: rgba(16, 185, 129, 0.1); }
+        .hl-yellow { background-color: rgba(245, 158, 11, 0.1); }
+        .row-hover:hover { background-color: var(--bg-hover); }
+
+        /* Selects */
+        select { background-color: var(--bg-input); color: var(--text-main); }
     </style>
 </head>
 <body class="p-6">
 
     <div id="loadingOverlay" class="fixed inset-0 z-50 hidden flex items-center justify-center">
-        <div class="bg-white p-4 rounded shadow-lg flex items-center gap-3">
-            <i class="fas fa-spinner fa-spin text-blue-600 text-xl"></i>
-            <span class="font-semibold text-gray-700" id="loadingText">Processing...</span>
+        <div class="card p-4 flex items-center gap-3">
+            <i class="fas fa-spinner fa-spin text-main text-xl"></i>
+            <span class="font-semibold text-main" id="loadingText">Processing...</span>
         </div>
     </div>
 
     <div class="max-w-[95%] mx-auto mb-8 flex flex-col md:flex-row justify-between items-center gap-4">
         <div>
-            <h1 class="text-3xl font-bold text-gray-800 flex items-center gap-2">
-                <i class="fas fa-chart-line text-blue-600" id="mainIcon"></i> 
+            <h1 class="text-3xl font-bold text-main flex items-center gap-2">
+                <i class="fas fa-chart-line" style="color: var(--accent-color)"></i> 
                 <span id="pageTitle">My Wealth Tracker</span>
             </h1>
-            <p id="pageSubtitle" class="text-gray-500 text-sm">Track savings, real estate, and crypto yields.</p>
+            <p id="pageSubtitle" class="text-sub text-sm">Track savings, real estate, and crypto yields.</p>
         </div>
         
-        <div class="flex gap-2">
+        <div class="flex gap-2 items-center flex-wrap justify-end">
             <button id="btnExitHistory" onclick="exitHistoryMode()" class="hidden bg-orange-600 text-white px-4 py-2 rounded shadow hover:bg-orange-700 font-bold fade-in">
                 <i class="fas fa-arrow-left"></i> Return to Current
             </button>
 
-            <div class="flex items-center gap-2 bg-white px-3 py-2 rounded shadow border border-gray-100">
-                <span class="text-sm font-bold text-gray-600">Base:</span>
-                <select id="baseCurrency" class="bg-transparent font-bold text-blue-600 focus:outline-none" onchange="renderAll()">
+            <div class="flex items-center gap-2 card px-3 py-2">
+                <i class="fas fa-palette text-sub"></i>
+                <select id="themeSelector" class="bg-transparent font-bold text-main focus:outline-none text-sm" onchange="setTheme(this.value)">
+                    <option value="light">Classic</option>
+                    <option value="dark">Dark Mode</option>
+                    <option value="midnight">Midnight</option>
+                    <option value="forest">Forest</option>
+                    <option value="ocean">Ocean</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-2 card px-3 py-2">
+                <span class="text-sm font-bold text-sub">Base:</span>
+                <select id="baseCurrency" class="bg-transparent font-bold text-main focus:outline-none" onchange="renderAll()">
                     <option value="USD">USD</option>
                     <option value="PLN">PLN</option>
                     <option value="SAR">SAR</option>
@@ -71,48 +216,48 @@
             </div>
             
             <div id="fileControls" class="flex gap-2">
-                <button onclick="exportData()" title="Export JSON" class="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 text-sm"><i class="fas fa-download"></i></button>
+                <button onclick="exportData()" title="Export JSON" class="card px-4 py-2 hover:bg-gray-100 text-sm"><i class="fas fa-download text-main"></i></button>
                 <input type="file" id="importFile" class="hidden" onchange="importData(this)">
-                <button onclick="document.getElementById('importFile').click()" title="Import JSON" class="bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 text-sm"><i class="fas fa-upload"></i></button>
+                <button onclick="document.getElementById('importFile').click()" title="Import JSON" class="card px-4 py-2 hover:bg-gray-100 text-sm"><i class="fas fa-upload text-main"></i></button>
             </div>
         </div>
     </div>
 
     <div class="max-w-[95%] mx-auto grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div class="card p-6 border-l-4 border-blue-500 relative" id="cardWealth">
-            <h3 class="text-gray-500 text-sm uppercase font-semibold">Total Net Worth</h3>
+        <div class="card p-6 border-l-4" style="border-left-color: var(--accent-color)">
+            <h3 class="text-sub text-sm uppercase font-semibold">Total Net Worth</h3>
             <div class="mt-2 flex items-baseline">
-                <span id="displayTotalWealth" class="text-3xl font-bold text-gray-800 fade-in">0.00</span>
-                <span id="displayCurrency1" class="ml-2 text-gray-500">USD</span>
+                <span id="displayTotalWealth" class="text-3xl font-bold text-main fade-in">0.00</span>
+                <span id="displayCurrency1" class="ml-2 text-sub">USD</span>
             </div>
         </div>
 
-        <div class="card p-6 border-l-4 border-green-500 relative" id="cardIncome">
-            <h3 class="text-gray-500 text-sm uppercase font-semibold">Est. Monthly Passive Income</h3>
+        <div class="card p-6 border-l-4 border-green-500">
+            <h3 class="text-sub text-sm uppercase font-semibold">Est. Monthly Passive Income</h3>
             <div class="mt-2 flex items-baseline">
-                <span id="displayTotalIncome" class="text-3xl font-bold text-gray-800 fade-in">0.00</span>
-                <span id="displayCurrency2" class="ml-2 text-gray-500">USD</span>
+                <span id="displayTotalIncome" class="text-3xl font-bold text-main fade-in">0.00</span>
+                <span id="displayCurrency2" class="ml-2 text-sub">USD</span>
             </div>
         </div>
 
         <div class="card p-6 relative">
             <div class="flex justify-between items-center mb-2">
-                <h3 class="text-gray-500 text-sm uppercase font-semibold">Exchange Rates (vs USD)</h3>
+                <h3 class="text-sub text-sm uppercase font-semibold">Exchange Rates (vs USD)</h3>
                 <button id="btnFetchRates" onclick="fetchLiveRates()" class="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition" title="Fetch live rates">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
             </div>
             <div class="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                    <label class="text-gray-400 text-xs">1 USD = ? PLN</label>
-                    <input type="number" id="ratePLN" step="0.0001" class="border rounded w-full px-2 py-1 font-mono text-gray-700" onchange="updateRatesManual()">
+                    <label class="text-sub text-xs">1 USD = ? PLN</label>
+                    <input type="number" id="ratePLN" step="0.0001" class="input-std" onchange="updateRatesManual()">
                 </div>
                 <div>
-                    <label class="text-gray-400 text-xs">1 USD = ? SAR</label>
-                    <input type="number" id="rateSAR" step="0.0001" class="border rounded w-full px-2 py-1 font-mono text-gray-700" onchange="updateRatesManual()">
+                    <label class="text-sub text-xs">1 USD = ? SAR</label>
+                    <input type="number" id="rateSAR" step="0.0001" class="input-std" onchange="updateRatesManual()">
                 </div>
             </div>
-            <div id="rateInfoText" class="text-[10px] text-gray-400 mt-2 text-right italic">Live Rates</div>
+            <div id="rateInfoText" class="text-[10px] text-sub mt-2 text-right italic">Live Rates</div>
         </div>
     </div>
 
@@ -120,37 +265,37 @@
         
         <div class="lg:col-span-2">
             
-            <div class="card p-6 mb-6 border border-gray-200">
+            <div class="card p-6 mb-6">
                 
                 <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 gap-4">
                     <div class="flex items-center gap-3">
-                        <h2 class="text-xl font-bold text-gray-700" id="listTitle">Current Assets</h2>
-                        <button id="btnSnapshot" onclick="archiveMonth()" class="text-sm bg-indigo-50 text-indigo-700 px-3 py-1 rounded hover:bg-indigo-100 transition border border-indigo-100">
+                        <h2 class="text-xl font-bold text-main" id="listTitle">Current Assets</h2>
+                        <button id="btnSnapshot" onclick="archiveMonth()" class="text-sm border border-indigo-200 text-indigo-500 px-3 py-1 rounded hover:bg-indigo-50 transition">
                             <i class="fas fa-save"></i> Snapshot Month
                         </button>
                     </div>
                     
                     <div class="relative w-full md:w-64">
                         <input type="text" id="searchInput" placeholder="Search name or category..." oninput="renderAll()" 
-                            class="w-full pl-9 pr-3 py-2 border rounded-full text-sm bg-gray-50 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
-                        <i class="fas fa-search absolute left-3 top-2.5 text-gray-400 text-xs"></i>
+                            class="input-std pl-9 rounded-full">
+                        <i class="fas fa-search absolute left-3 top-2.5 text-sub text-xs"></i>
                     </div>
                 </div>
 
-                <form id="assetForm" onsubmit="handleAssetSubmit(event)" class="bg-gray-50 p-4 rounded mb-6 grid grid-cols-1 md:grid-cols-6 gap-3 items-end border border-gray-200">
+                <form id="assetForm" onsubmit="handleAssetSubmit(event)" class="p-4 rounded mb-6 grid grid-cols-1 md:grid-cols-6 gap-3 items-end border border-dashed border-[var(--border-color)]">
                     <input type="hidden" id="editId" value="">
 
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-gray-500">Category</label>
+                        <label class="text-xs font-bold text-sub">Category</label>
                         <input type="text" id="inCat" placeholder="e.g. Real Estate" class="input-std" list="catList" required>
                         <datalist id="catList"></datalist>
                     </div>
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-gray-500">Subcategory / Name</label>
+                        <label class="text-xs font-bold text-sub">Subcategory / Name</label>
                         <input type="text" id="inSub" placeholder="e.g. Apartment 1" class="input-std" required>
                     </div>
                     <div class="md:col-span-1">
-                        <label class="text-xs font-bold text-gray-500">Currency</label>
+                        <label class="text-xs font-bold text-sub">Currency</label>
                         <select id="inCurr" class="input-std">
                             <option value="PLN">PLN</option>
                             <option value="SAR">SAR</option>
@@ -158,12 +303,12 @@
                         </select>
                     </div>
                     <div class="md:col-span-1">
-                        <label class="text-xs font-bold text-gray-500">Amount</label>
+                        <label class="text-xs font-bold text-sub">Amount</label>
                         <input type="number" id="inAmt" placeholder="0.00" step="0.01" class="input-std" required>
                     </div>
                     
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-gray-500">Yield Type</label>
+                        <label class="text-xs font-bold text-sub">Yield Type</label>
                         <select id="inYieldType" class="input-std">
                             <option value="none">None</option>
                             <option value="percent_year">% APY (Yearly)</option>
@@ -171,11 +316,11 @@
                         </select>
                     </div>
                     <div class="md:col-span-2">
-                        <label class="text-xs font-bold text-gray-500">Yield Value</label>
+                        <label class="text-xs font-bold text-sub">Yield Value</label>
                         <input type="number" id="inYieldVal" placeholder="0" step="0.01" class="input-std">
                     </div>
                     <div class="md:col-span-2 flex gap-2">
-                        <button type="submit" id="btnSubmit" class="bg-blue-600 text-white flex-1 py-2 rounded hover:bg-blue-700 font-bold shadow-sm">Add Asset</button>
+                        <button type="submit" id="btnSubmit" class="btn-primary w-full shadow-sm">Add Asset</button>
                         <button type="button" id="btnCancelEdit" onclick="cancelEdit()" class="hidden bg-gray-300 text-gray-700 px-3 py-2 rounded hover:bg-gray-400 font-bold"><i class="fas fa-times"></i></button>
                     </div>
                 </form>
@@ -183,23 +328,23 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="text-gray-500 border-b text-sm bg-gray-50">
+                            <tr class="text-sub border-b border-[var(--border-color)] text-sm">
                                 <th class="p-3 w-10 text-center"><input type="checkbox" id="selectAllCheckbox" onclick="toggleSelectAll(this.checked)" class="cursor-pointer"></th>
                                 <th class="p-3 rounded-tl sortable" onclick="setSort('category')">
-                                    Category <i id="sortIcon-category" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                    Category <i id="sortIcon-category" class="fas fa-sort text-xs ml-1 opacity-50"></i>
                                 </th>
                                 <th class="p-3 sortable" onclick="setSort('subcategory')">
-                                    Name <i id="sortIcon-subcategory" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                    Name <i id="sortIcon-subcategory" class="fas fa-sort text-xs ml-1 opacity-50"></i>
                                 </th>
                                 <th class="p-3 text-right">Value (Orig)</th>
                                 <th class="p-3 text-right sortable" onclick="setSort('valueBase')">
-                                    Value (Base) <i id="sortIcon-valueBase" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                    Value (Base) <i id="sortIcon-valueBase" class="fas fa-sort text-xs ml-1 opacity-50"></i>
                                 </th>
-                                <th class="p-3 text-right text-gray-500 font-semibold text-xs whitespace-nowrap">
+                                <th class="p-3 text-right font-semibold text-xs whitespace-nowrap">
                                     % of Total
                                 </th>
                                 <th class="p-3 text-right sortable" onclick="setSort('income')">
-                                    Mth. Income <i id="sortIcon-income" class="fas fa-sort text-xs text-gray-300 ml-1"></i>
+                                    Mth. Income <i id="sortIcon-income" class="fas fa-sort text-xs ml-1 opacity-50"></i>
                                 </th>
                                 <th class="p-3 text-center rounded-tr">Action</th>
                             </tr>
@@ -208,15 +353,15 @@
                             </tbody>
                     </table>
                 </div>
-                <div class="text-xs text-gray-400 mt-2 italic text-center">
+                <div class="text-xs text-sub mt-2 italic text-center">
                     <i class="fas fa-info-circle"></i> Tip: Click a Category name to select/deselect the entire group.
                 </div>
             </div>
 
              <div class="card p-6">
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-xl font-bold text-gray-700">History</h2>
-                    <button onclick="addHistoricalRecord()" class="text-xs bg-gray-100 text-gray-600 px-3 py-2 rounded hover:bg-gray-200 border border-gray-300">
+                    <h2 class="text-xl font-bold text-main">History</h2>
+                    <button onclick="addHistoricalRecord()" class="text-xs border border-dashed border-[var(--border-color)] text-sub px-3 py-2 rounded hover:bg-[var(--bg-hover)]">
                         <i class="fas fa-plus"></i> Add Past Record
                     </button>
                 </div>
@@ -227,39 +372,38 @@
 
         <div class="lg:col-span-1 flex flex-col gap-6">
             
-            <div class="card p-4 border-2 border-indigo-100 bg-indigo-50/30">
-                <h3 class="font-bold text-indigo-700 mb-2 text-center text-sm uppercase">Selection Analysis</h3>
+            <div class="card p-4" style="border: 2px solid var(--border-color);">
+                <h3 class="font-bold text-main mb-2 text-center text-sm uppercase">Selection Analysis</h3>
                 
                 <div id="presetsContainer" class="mb-4 text-center">
-                    <div id="presetList" class="flex flex-wrap gap-2 justify-center">
-                        </div>
+                    <div id="presetList" class="flex flex-wrap gap-2 justify-center"></div>
                 </div>
 
                 <div class="flex justify-center mb-3">
-                    <div class="bg-indigo-100 p-1 rounded-lg flex text-xs">
-                        <button onclick="setChartMode('category')" id="mode-category" class="px-3 py-1 rounded bg-white shadow text-indigo-700 font-semibold transition">By Category</button>
-                        <button onclick="setChartMode('item')" id="mode-item" class="px-3 py-1 rounded text-indigo-600 hover:text-indigo-800 transition">By Item</button>
+                    <div class="bg-[var(--bg-input)] p-1 rounded-lg flex text-xs">
+                        <button onclick="setChartMode('category')" id="mode-category" class="px-3 py-1 rounded transition font-semibold">By Category</button>
+                        <button onclick="setChartMode('item')" id="mode-item" class="px-3 py-1 rounded transition font-semibold">By Item</button>
                     </div>
                 </div>
 
                 <div class="text-center mb-2">
-                    <span class="text-xs text-gray-500">Selected Value:</span>
-                    <div class="text-2xl font-bold text-indigo-800">
-                        <span id="selectionTotal">0.00</span> <span id="selectionCurrency" class="text-sm font-normal">USD</span>
+                    <span class="text-xs text-sub">Selected Value:</span>
+                    <div class="text-2xl font-bold" style="color: var(--accent-color)">
+                        <span id="selectionTotal">0.00</span> <span id="selectionCurrency" class="text-sm font-normal text-main">USD</span>
                     </div>
-                    <div class="text-xs font-semibold text-indigo-500 mt-1" id="selectionShareText">
+                    <div class="text-xs font-semibold mt-1" style="color: var(--text-sub)" id="selectionShareText">
                         (0.00% of Total Net Worth)
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-2 mb-4 bg-white/60 p-2 rounded-lg border border-indigo-100">
-                    <div class="text-center border-r border-indigo-100">
-                        <div class="text-[10px] text-gray-500 uppercase font-semibold">Yearly Yield</div>
-                        <div class="text-sm font-bold text-green-600"><span id="selYearly">0.00</span></div>
+                <div class="grid grid-cols-2 gap-2 mb-4 p-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-input)]">
+                    <div class="text-center border-r border-[var(--border-color)]">
+                        <div class="text-[10px] text-sub uppercase font-semibold">Yearly Yield</div>
+                        <div class="text-sm font-bold" style="color: var(--success)"><span id="selYearly">0.00</span></div>
                     </div>
                     <div class="text-center">
-                        <div class="text-[10px] text-gray-500 uppercase font-semibold">Daily Yield</div>
-                        <div class="text-sm font-bold text-green-600"><span id="selDaily">0.00</span></div>
+                        <div class="text-[10px] text-sub uppercase font-semibold">Daily Yield</div>
+                        <div class="text-sm font-bold" style="color: var(--success)"><span id="selDaily">0.00</span></div>
                     </div>
                 </div>
                 
@@ -267,21 +411,21 @@
                     <canvas id="selectionChart"></canvas>
                 </div>
 
-                <div class="flex gap-2 items-center border-t border-indigo-200 pt-3">
-                    <input type="text" id="newPresetName" placeholder="Save selection as..." class="flex-1 text-xs border border-indigo-200 rounded px-2 py-1 focus:outline-none focus:border-indigo-500">
-                    <button onclick="savePreset()" class="bg-indigo-600 text-white text-xs px-3 py-1 rounded hover:bg-indigo-700 transition">Save</button>
+                <div class="flex gap-2 items-center border-t border-[var(--border-color)] pt-3">
+                    <input type="text" id="newPresetName" placeholder="Save selection as..." class="input-std text-xs py-1">
+                    <button onclick="savePreset()" class="text-xs px-3 py-1 rounded transition font-bold" style="background: var(--accent-color); color: var(--accent-text)">Save</button>
                 </div>
                 
-                <p id="selectionHint" class="text-center text-xs text-gray-400 mt-2 italic">Check boxes or click categories to analyze.</p>
+                <p id="selectionHint" class="text-center text-xs text-sub mt-2 italic">Check boxes or click categories to analyze.</p>
             </div>
 
             <div class="card p-4">
-                <h3 class="font-bold text-gray-700 mb-4 text-center">Wealth Allocation (Visible)</h3>
+                <h3 class="font-bold text-main mb-4 text-center">Wealth Allocation (Visible)</h3>
                 <canvas id="allocationChart"></canvas>
             </div>
             
             <div class="card p-4">
-                <h3 class="font-bold text-gray-700 mb-4 text-center">Net Worth History</h3>
+                <h3 class="font-bold text-main mb-4 text-center">Net Worth History</h3>
                 <canvas id="historyChart"></canvas>
             </div>
         </div>
@@ -301,7 +445,8 @@
             lastRateUpdate: null,
             currentAssets: [],
             history: [],
-            presets: [] 
+            presets: [],
+            theme: 'light' // Default Theme
         };
 
         // UI State
@@ -327,9 +472,14 @@
                 appData = { ...appData, ...loaded };
                 if(!appData.liveRates) appData.liveRates = { ...appData.rates };
                 if(!appData.presets) appData.presets = [];
+                if(!appData.theme) appData.theme = 'light';
             }
             
             appData.rates = { ...appData.liveRates };
+
+            // Apply Saved Theme
+            setTheme(appData.theme);
+            document.getElementById('themeSelector').value = appData.theme;
 
             updateRateInputs();
             renderAll();
@@ -340,6 +490,15 @@
                 await fetchLiveRates();
             }
         };
+
+        // --- THEME LOGIC ---
+        function setTheme(themeName) {
+            document.documentElement.setAttribute('data-theme', themeName);
+            appData.theme = themeName;
+            saveData();
+            // Re-render charts to update text colors if needed (optional)
+            renderAll();
+        }
 
         // --- LOADING SPINNER ---
         function toggleLoading(show, text="Processing...") {
@@ -403,7 +562,7 @@
                 label.className = "text-[10px] text-orange-600 mt-2 text-right font-bold";
             } else {
                 label.innerText = "Live Rates";
-                label.className = "text-[10px] text-gray-400 mt-2 text-right italic";
+                label.className = "text-[10px] text-sub mt-2 text-right italic";
             }
         }
 
@@ -479,13 +638,15 @@
         function updateSortIcons() {
             ['category', 'subcategory', 'valueBase', 'income'].forEach(k => {
                 const el = document.getElementById('sortIcon-' + k);
-                if(el) el.className = 'fas fa-sort text-xs text-gray-300 ml-1';
+                if(el) {
+                    el.className = 'fas fa-sort text-xs ml-1 opacity-50 text-sub';
+                }
             });
             const activeEl = document.getElementById('sortIcon-' + sortState.key);
             if(activeEl) {
                 activeEl.className = sortState.dir === 'asc' 
-                    ? 'fas fa-sort-up text-xs text-blue-600 ml-1' 
-                    : 'fas fa-sort-down text-xs text-blue-600 ml-1';
+                    ? 'fas fa-sort-up text-xs ml-1 opacity-100 text-main' 
+                    : 'fas fa-sort-down text-xs ml-1 opacity-100 text-main';
             }
         }
 
@@ -543,13 +704,16 @@
             const btnCat = document.getElementById('mode-category');
             const btnItem = document.getElementById('mode-item');
             
-            if(mode === 'category') {
-                btnCat.className = "px-3 py-1 rounded bg-white shadow text-indigo-700 font-semibold transition";
-                btnItem.className = "px-3 py-1 rounded text-indigo-600 hover:text-indigo-800 transition";
-            } else {
-                btnItem.className = "px-3 py-1 rounded bg-white shadow text-indigo-700 font-semibold transition";
-                btnCat.className = "px-3 py-1 rounded text-indigo-600 hover:text-indigo-800 transition";
-            }
+            // Basic reset
+            btnCat.style.backgroundColor = 'transparent'; btnCat.style.color = 'var(--text-sub)'; btnCat.style.boxShadow = 'none';
+            btnItem.style.backgroundColor = 'transparent'; btnItem.style.color = 'var(--text-sub)'; btnItem.style.boxShadow = 'none';
+
+            // Active Style
+            const activeBtn = mode === 'category' ? btnCat : btnItem;
+            activeBtn.style.backgroundColor = 'var(--bg-card)';
+            activeBtn.style.color = 'var(--accent-color)';
+            activeBtn.style.boxShadow = '0 1px 3px 0 rgba(0, 0, 0, 0.1)';
+
             renderSelectionChart();
         }
 
@@ -597,7 +761,7 @@
                 chip.onclick = () => loadPreset(p.id);
                 chip.innerHTML = `
                     <span>${p.name}</span>
-                    <button onclick="deletePreset(${p.id}, event)" class="w-4 h-4 rounded-full hover:bg-indigo-100 flex items-center justify-center text-indigo-400 hover:text-red-500">
+                    <button onclick="deletePreset(${p.id}, event)" class="w-4 h-4 rounded-full hover:bg-[var(--bg-hover)] flex items-center justify-center text-sub hover:text-red-500">
                         <i class="fas fa-times text-[10px]"></i>
                     </button>
                 `;
@@ -654,7 +818,6 @@
             editModeId = id;
             const btn = document.getElementById('btnSubmit');
             btn.innerText = "Update Asset";
-            btn.className = "bg-green-600 text-white flex-1 py-2 rounded hover:bg-green-700 font-bold shadow-sm";
             document.getElementById('btnCancelEdit').classList.remove('hidden');
 
             document.getElementById('assetForm').scrollIntoView({behavior: 'smooth'});
@@ -665,7 +828,6 @@
             editModeId = null;
             const btn = document.getElementById('btnSubmit');
             btn.innerText = "Add Asset";
-            btn.className = "bg-blue-600 text-white flex-1 py-2 rounded hover:bg-blue-700 font-bold shadow-sm";
             document.getElementById('btnCancelEdit').classList.add('hidden');
         }
 
@@ -721,7 +883,6 @@
             document.getElementById('pageTitle').innerText = "Editing Snapshot: " + dateStr;
             document.getElementById('pageSubtitle').innerText = "Rates and values reflect this past date.";
             document.getElementById('listTitle').innerText = "Assets in Snapshot (" + dateStr + ")";
-            document.getElementById('mainIcon').classList.replace('text-blue-600', 'text-orange-600');
             document.getElementById('btnSnapshot').classList.add('hidden');
             document.getElementById('btnExitHistory').classList.remove('hidden');
             
@@ -742,7 +903,6 @@
             document.getElementById('pageTitle').innerText = "My Wealth Tracker";
             document.getElementById('pageSubtitle').innerText = "Track savings, real estate, and crypto yields.";
             document.getElementById('listTitle').innerText = "Current Assets";
-            document.getElementById('mainIcon').classList.replace('text-orange-600', 'text-blue-600');
             document.getElementById('btnSnapshot').classList.remove('hidden');
             document.getElementById('btnExitHistory').classList.add('hidden');
             
@@ -808,6 +968,8 @@
             document.getElementById('selectionCurrency').innerText = base;
 
             updateSortIcons();
+            // Init toggle style
+            setChartMode(selectionChartMode);
 
             const tbody = document.getElementById('assetTableBody');
             tbody.innerHTML = '';
@@ -895,28 +1057,27 @@
                 const percentage = globalTotalWealth > 0 ? ((valInBase / globalTotalWealth) * 100).toFixed(2) + "%" : "0.00%";
 
                 // Ranked Highlighting (on Visible list)
-                let rowBg = "";
-                if(index < 3) rowBg = "bg-green-50 hover:bg-green-100";
-                else if(index < 10) rowBg = "bg-yellow-50 hover:bg-yellow-100";
-                else rowBg = activeSnapshotId ? "hover:bg-orange-100" : "hover:bg-gray-50";
+                let rowBg = "row-hover";
+                if(index < 3) rowBg = "hl-green";
+                else if(index < 10) rowBg = "hl-yellow";
 
                 const tr = document.createElement('tr');
-                tr.className = `border-b transition ${rowBg}`;
+                tr.className = `transition ${rowBg}`;
                 tr.innerHTML = `
                     <td class="p-3 text-center">
-                        <input type="checkbox" class="asset-checkbox cursor-pointer" 
+                        <input type="checkbox" class="cursor-pointer" 
                             onchange="toggleSelect(${asset.id}, this.checked)" 
                             ${isSelected ? 'checked' : ''}>
                     </td>
-                    <td class="p-3 font-medium text-gray-700 cat-cell" onclick="toggleCategory('${asset.category.replace(/'/g, "\\'")}')" title="Click to toggle all ${asset.category} assets">
+                    <td class="p-3 font-medium text-main cat-cell" onclick="toggleCategory('${asset.category.replace(/'/g, "\\'")}')" title="Click to toggle all ${asset.category} assets">
                         <span style="background-color: ${catColor}" class="w-2.5 h-2.5 rounded-full inline-block mr-2"></span>
                         ${asset.category}
                     </td>
-                    <td class="p-3 text-gray-600">${asset.subcategory}</td>
-                    <td class="p-3 text-right text-gray-500 text-xs">${asset.amount.toLocaleString()} ${asset.currency}</td>
-                    <td class="p-3 text-right font-bold text-gray-800">${valInBase.toLocaleString(undefined, {maximumFractionDigits:0})} ${base}</td>
-                    <td class="p-3 text-right text-gray-500 text-xs font-semibold">${percentage}</td>
-                    <td class="p-3 text-right text-green-600">+${monthlyIncomeBase.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
+                    <td class="p-3 text-sub">${asset.subcategory}</td>
+                    <td class="p-3 text-right text-sub text-xs">${asset.amount.toLocaleString()} ${asset.currency}</td>
+                    <td class="p-3 text-right font-bold text-main">${valInBase.toLocaleString(undefined, {maximumFractionDigits:0})} ${base}</td>
+                    <td class="p-3 text-right text-sub text-xs font-semibold">${percentage}</td>
+                    <td class="p-3 text-right font-bold" style="color: var(--success)">+${monthlyIncomeBase.toLocaleString(undefined, {maximumFractionDigits:0})}</td>
                     <td class="p-3 text-center flex justify-center gap-2">
                         <button onclick="startEditAsset(${asset.id})" class="text-blue-400 hover:text-blue-600" title="Edit"><i class="fas fa-pen"></i></button>
                         <button onclick="deleteAsset(${asset.id})" class="text-gray-400 hover:text-red-500" title="Delete"><i class="fas fa-trash"></i></button>
@@ -927,7 +1088,7 @@
 
             // If empty search result
             if(visibleAssets.length === 0 && sourceAssets.length > 0) {
-                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-gray-400">No assets match your search.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="8" class="text-center py-8 text-sub">No assets match your search.</td></tr>`;
             }
 
             document.getElementById('displayTotalIncome').innerText = totalMonthlyIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2});
@@ -1016,14 +1177,15 @@
                     datasets: [{
                         data: data,
                         backgroundColor: colors,
-                        borderWidth: 1
+                        borderWidth: 1,
+                        borderColor: getComputedStyle(document.body).getPropertyValue('--bg-card')
                     }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: { 
-                        legend: { position: 'right', labels: { boxWidth: 10, font: {size: 9} } },
+                        legend: { position: 'right', labels: { boxWidth: 10, font: {size: 9}, color: getComputedStyle(document.body).getPropertyValue('--text-sub') } },
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
@@ -1057,12 +1219,15 @@
                     datasets: [{
                         data: data,
                         backgroundColor: colors,
-                        borderWidth: 1
+                        borderWidth: 1,
+                        borderColor: getComputedStyle(document.body).getPropertyValue('--bg-card')
                     }]
                 },
                 options: {
                     responsive: true,
-                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: {size: 10} } } }
+                    plugins: { 
+                        legend: { position: 'bottom', labels: { boxWidth: 12, font: {size: 10}, color: getComputedStyle(document.body).getPropertyValue('--text-sub') } } 
+                    }
                 }
             });
 
@@ -1100,7 +1265,7 @@
                     datasets: [{
                         label: 'Net Worth',
                         data: histValues,
-                        borderColor: activeSnapshotId ? '#ea580c' : '#3B82F6',
+                        borderColor: getComputedStyle(document.body).getPropertyValue('--accent-color'),
                         backgroundColor: activeSnapshotId ? 'rgba(234, 88, 12, 0.1)' : 'rgba(59, 130, 246, 0.1)',
                         borderWidth: 2,
                         tension: 0.3,
@@ -1114,8 +1279,9 @@
                     scales: { 
                         y: { 
                             beginAtZero: false, 
-                            grid: { color: '#f3f4f6' },
+                            grid: { color: getComputedStyle(document.body).getPropertyValue('--border-color') },
                             ticks: {
+                                color: getComputedStyle(document.body).getPropertyValue('--text-sub'),
                                 callback: function(value) {
                                     return new Intl.NumberFormat('en-US', {
                                         notation: "compact",
@@ -1124,7 +1290,7 @@
                                 }
                             }
                         },
-                        x: { grid: { display: false } }
+                        x: { grid: { display: false }, ticks: { color: getComputedStyle(document.body).getPropertyValue('--text-sub') } }
                     }
                 }
             });
@@ -1145,27 +1311,36 @@
                 const dateInputVal = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
 
                 const div = document.createElement('div');
-                div.className = `flex justify-between items-center p-2 rounded border text-sm transition ${isActive ? 'bg-orange-100 border-orange-300 ring-2 ring-orange-400' : 'bg-white border-gray-100 hover:bg-gray-50'}`;
+                div.className = `flex justify-between items-center p-2 rounded border text-sm transition`;
+                // Manual theme handling for history items since they are dynamic
+                if(isActive) {
+                    div.style.backgroundColor = 'var(--bg-input)';
+                    div.style.borderColor = 'var(--accent-color)';
+                    div.style.borderWidth = '2px';
+                } else {
+                    div.style.backgroundColor = 'var(--bg-card)';
+                    div.style.borderColor = 'var(--border-color)';
+                }
                 
                 div.innerHTML = `
                     <div class="flex flex-col">
-                        <input type="date" value="${dateInputVal}" onchange="updateSnapshotDate(${h.id}, this.value)" class="bg-transparent border-none text-gray-700 font-bold text-xs p-0 focus:ring-0 cursor-pointer mb-1">
-                        <div class="text-xs text-gray-500">${h.assets.length} assets</div>
+                        <input type="date" value="${dateInputVal}" onchange="updateSnapshotDate(${h.id}, this.value)" class="bg-transparent border-none font-bold text-xs p-0 focus:ring-0 cursor-pointer mb-1 text-main">
+                        <div class="text-xs text-sub">${h.assets.length} assets</div>
                     </div>
                     <div class="flex items-center gap-3">
-                        <span class="font-bold text-gray-800">${val.toLocaleString(undefined, {maximumFractionDigits:0})} ${base}</span>
+                        <span class="font-bold text-main">${val.toLocaleString(undefined, {maximumFractionDigits:0})} ${base}</span>
                         ${isActive 
-                            ? `<span class="text-xs font-bold text-orange-600 px-2 py-1 bg-white rounded-full">Editing</span>`
-                            : `<button onclick="enterHistoryMode(${h.id})" class="text-blue-500 hover:text-blue-700 text-xs font-bold border border-blue-200 px-2 py-1 rounded hover:bg-blue-50">Edit</button>`
+                            ? `<span class="text-xs font-bold px-2 py-1 bg-[var(--bg-app)] rounded-full" style="color: var(--accent-color)">Editing</span>`
+                            : `<button onclick="enterHistoryMode(${h.id})" class="text-xs font-bold border px-2 py-1 rounded hover:bg-[var(--bg-hover)]" style="color: var(--accent-color); border-color: var(--border-color)">Edit</button>`
                         }
-                        ${!isActive ? `<button onclick="deleteHistory(${h.id})" class="text-gray-300 hover:text-red-500"><i class="fas fa-times"></i></button>` : ''}
+                        ${!isActive ? `<button onclick="deleteHistory(${h.id})" class="text-sub hover:text-red-500"><i class="fas fa-times"></i></button>` : ''}
                     </div>
                 `;
                 list.appendChild(div);
             });
 
             if(sortedHist.length === 0) {
-                list.innerHTML = '<div class="text-center text-gray-400 text-xs py-4">No history saved yet.</div>';
+                list.innerHTML = '<div class="text-center text-xs py-4 text-sub">No history saved yet.</div>';
             }
         }
 
@@ -1219,8 +1394,13 @@
                         if(!appData.rates) appData.rates = {...DEFAULT_RATES};
                         if(!appData.liveRates) appData.liveRates = {...appData.rates};
                         if(!appData.presets) appData.presets = [];
+                        if(!appData.theme) appData.theme = 'light';
                         
                         saveData();
+                        // Apply imported theme
+                        setTheme(appData.theme);
+                        document.getElementById('themeSelector').value = appData.theme;
+                        
                         renderAll();
                         renderPresets();
                     }
