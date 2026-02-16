@@ -3,30 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wealth Tracker - Themed</title>
+    <title>Wealth Tracker - Dark Default</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     
     <style>
         /* --- THEME VARIABLES --- */
+        /* DEFAULT IS NOW DARK MODE */
         :root {
-            /* Default (Classic Light) */
-            --bg-app: #f3f4f6;
-            --bg-card: #ffffff;
-            --bg-input: #f9fafb;
-            --bg-hover: #f3f4f6;
-            --text-main: #1f2937;
-            --text-sub: #6b7280;
-            --border-color: #e5e7eb;
-            --accent-color: #2563eb; /* Blue-600 */
-            --accent-hover: #1d4ed8; /* Blue-700 */
-            --accent-text: #ffffff;
-            --success: #10b981;
-        }
-
-        /* Dark Mode */
-        [data-theme="dark"] {
             --bg-app: #111827;
             --bg-card: #1f2937;
             --bg-input: #374151;
@@ -40,6 +25,21 @@
             --success: #34d399;
         }
 
+        /* Light Mode */
+        [data-theme="light"] {
+            --bg-app: #f3f4f6;
+            --bg-card: #ffffff;
+            --bg-input: #f9fafb;
+            --bg-hover: #f3f4f6;
+            --text-main: #1f2937;
+            --text-sub: #6b7280;
+            --border-color: #e5e7eb;
+            --accent-color: #2563eb;
+            --accent-hover: #1d4ed8;
+            --accent-text: #ffffff;
+            --success: #10b981;
+        }
+
         /* Midnight (Deep Blue) */
         [data-theme="midnight"] {
             --bg-app: #0f172a;
@@ -49,7 +49,7 @@
             --text-main: #e2e8f0;
             --text-sub: #94a3b8;
             --border-color: #334155;
-            --accent-color: #8b5cf6; /* Violet */
+            --accent-color: #8b5cf6;
             --accent-hover: #a78bfa;
             --accent-text: #ffffff;
             --success: #4ade80;
@@ -64,7 +64,7 @@
             --text-main: #064e3b;
             --text-sub: #047857;
             --border-color: #a7f3d0;
-            --accent-color: #059669; /* Emerald */
+            --accent-color: #059669;
             --accent-hover: #047857;
             --accent-text: #ffffff;
             --success: #16a34a;
@@ -79,7 +79,7 @@
             --text-main: #0c4a6e;
             --text-sub: #0284c7;
             --border-color: #bae6fd;
-            --accent-color: #0891b2; /* Cyan */
+            --accent-color: #0891b2;
             --accent-hover: #0e7490;
             --accent-text: #ffffff;
             --success: #0ea5e9;
@@ -138,7 +138,7 @@
         input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; filter: invert(0.5); }
         
         /* Loading Spinner */
-        #loadingOverlay { backdrop-filter: blur(2px); background: rgba(0,0,0,0.2); }
+        #loadingOverlay { backdrop-filter: blur(2px); background: rgba(0,0,0,0.5); }
 
         /* Preset Chips */
         .preset-chip { 
@@ -163,16 +163,23 @@
         tr { border-bottom: 1px solid var(--border-color); }
         tr:last-child { border-bottom: none; }
         
-        /* Highlight Classes */
-        .hl-green { background-color: rgba(16, 185, 129, 0.1); }
-        .hl-yellow { background-color: rgba(245, 158, 11, 0.1); }
+        /* Highlight Classes (Adjusted for dark mode visibility) */
+        .hl-green { background-color: rgba(16, 185, 129, 0.15); }
+        .hl-yellow { background-color: rgba(245, 158, 11, 0.15); }
         .row-hover:hover { background-color: var(--bg-hover); }
 
         /* Selects */
         select { background-color: var(--bg-input); color: var(--text-main); }
+
+        /* Theme Menu Item */
+        .theme-item { 
+            padding: 8px 12px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-size: 0.875rem; color: var(--text-main);
+        }
+        .theme-item:hover { background-color: var(--bg-hover); }
+        .theme-item.active { color: var(--accent-color); font-weight: bold; }
     </style>
 </head>
-<body class="p-6">
+<body class="p-6" onclick="closeThemeMenu(event)">
 
     <div id="loadingOverlay" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="card p-4 flex items-center gap-3">
@@ -195,15 +202,14 @@
                 <i class="fas fa-arrow-left"></i> Return to Current
             </button>
 
-            <div class="flex items-center gap-2 card px-3 py-2">
-                <i class="fas fa-palette text-sub"></i>
-                <select id="themeSelector" class="bg-transparent font-bold text-main focus:outline-none text-sm" onchange="setTheme(this.value)">
-                    <option value="light">Classic</option>
-                    <option value="dark">Dark Mode</option>
-                    <option value="midnight">Midnight</option>
-                    <option value="forest">Forest</option>
-                    <option value="ocean">Ocean</option>
-                </select>
+            <div class="relative">
+                <button onclick="toggleThemeMenu(event)" class="card px-3 py-2 flex items-center gap-2 hover:bg-[var(--bg-hover)] transition">
+                    <i class="fas fa-palette text-sub"></i>
+                    <span class="text-sm font-bold text-main">Theme</span>
+                    <i class="fas fa-chevron-down text-xs text-sub ml-1"></i>
+                </button>
+                <div id="themeMenu" class="hidden absolute top-full right-0 mt-2 w-48 bg-[var(--bg-card)] border border-[var(--border-color)] shadow-xl rounded-lg overflow-hidden z-50">
+                    </div>
             </div>
 
             <div class="flex items-center gap-2 card px-3 py-2">
@@ -216,9 +222,9 @@
             </div>
             
             <div id="fileControls" class="flex gap-2">
-                <button onclick="exportData()" title="Export JSON" class="card px-4 py-2 hover:bg-gray-100 text-sm"><i class="fas fa-download text-main"></i></button>
+                <button onclick="exportData()" title="Export JSON" class="card px-4 py-2 hover:bg-[var(--bg-hover)] text-sm"><i class="fas fa-download text-main"></i></button>
                 <input type="file" id="importFile" class="hidden" onchange="importData(this)">
-                <button onclick="document.getElementById('importFile').click()" title="Import JSON" class="card px-4 py-2 hover:bg-gray-100 text-sm"><i class="fas fa-upload text-main"></i></button>
+                <button onclick="document.getElementById('importFile').click()" title="Import JSON" class="card px-4 py-2 hover:bg-[var(--bg-hover)] text-sm"><i class="fas fa-upload text-main"></i></button>
             </div>
         </div>
     </div>
@@ -270,7 +276,7 @@
                 <div class="flex flex-col md:flex-row justify-between items-end md:items-center mb-6 gap-4">
                     <div class="flex items-center gap-3">
                         <h2 class="text-xl font-bold text-main" id="listTitle">Current Assets</h2>
-                        <button id="btnSnapshot" onclick="archiveMonth()" class="text-sm border border-indigo-200 text-indigo-500 px-3 py-1 rounded hover:bg-indigo-50 transition">
+                        <button id="btnSnapshot" onclick="archiveMonth()" class="text-sm border border-[var(--border-color)] text-[var(--accent-color)] px-3 py-1 rounded hover:bg-[var(--bg-hover)] transition">
                             <i class="fas fa-save"></i> Snapshot Month
                         </button>
                     </div>
@@ -439,6 +445,15 @@
             '#6366F1', '#14B8A6', '#F97316', '#84CC16', '#06B6D4', '#64748B'
         ];
 
+        // Themes Config
+        const THEMES = [
+            { id: 'dark', name: 'Dark Mode' },
+            { id: 'light', name: 'Classic Light' },
+            { id: 'midnight', name: 'Midnight' },
+            { id: 'forest', name: 'Forest' },
+            { id: 'ocean', name: 'Ocean' }
+        ];
+
         let appData = {
             rates: { ...DEFAULT_RATES },
             liveRates: { ...DEFAULT_RATES },
@@ -446,7 +461,7 @@
             currentAssets: [],
             history: [],
             presets: [],
-            theme: 'light' // Default Theme
+            theme: 'dark' // Default is now Dark
         };
 
         // UI State
@@ -472,14 +487,14 @@
                 appData = { ...appData, ...loaded };
                 if(!appData.liveRates) appData.liveRates = { ...appData.rates };
                 if(!appData.presets) appData.presets = [];
-                if(!appData.theme) appData.theme = 'light';
+                // If old user, preserve preference, else default to dark
+                if(!appData.theme) appData.theme = 'dark';
             }
             
             appData.rates = { ...appData.liveRates };
 
             // Apply Saved Theme
             setTheme(appData.theme);
-            document.getElementById('themeSelector').value = appData.theme;
 
             updateRateInputs();
             renderAll();
@@ -492,11 +507,34 @@
         };
 
         // --- THEME LOGIC ---
+        function toggleThemeMenu(event) {
+            event.stopPropagation();
+            const menu = document.getElementById('themeMenu');
+            
+            // Re-render menu content to show checkmark on active
+            menu.innerHTML = THEMES.map(t => `
+                <div class="theme-item ${appData.theme === t.id ? 'active' : ''}" onclick="setTheme('${t.id}')">
+                    <span>${t.name}</span>
+                    ${appData.theme === t.id ? '<i class="fas fa-check text-[var(--accent-color)]"></i>' : ''}
+                </div>
+            `).join('');
+            
+            menu.classList.toggle('hidden');
+        }
+
+        function closeThemeMenu(event) {
+            const menu = document.getElementById('themeMenu');
+            if (!menu.classList.contains('hidden')) {
+                menu.classList.add('hidden');
+            }
+        }
+
         function setTheme(themeName) {
             document.documentElement.setAttribute('data-theme', themeName);
             appData.theme = themeName;
             saveData();
-            // Re-render charts to update text colors if needed (optional)
+            
+            // Re-render charts to update text colors
             renderAll();
         }
 
@@ -1394,12 +1432,11 @@
                         if(!appData.rates) appData.rates = {...DEFAULT_RATES};
                         if(!appData.liveRates) appData.liveRates = {...appData.rates};
                         if(!appData.presets) appData.presets = [];
-                        if(!appData.theme) appData.theme = 'light';
+                        if(!appData.theme) appData.theme = 'dark'; // ensure dark is default if missing
                         
                         saveData();
                         // Apply imported theme
                         setTheme(appData.theme);
-                        document.getElementById('themeSelector').value = appData.theme;
                         
                         renderAll();
                         renderPresets();
